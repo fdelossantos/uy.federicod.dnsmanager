@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.8.34309.116
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "uy.federicod.dnsmanager.UI", "uy.federicod.dnsmanager\uy.federicod.dnsmanager.UI.csproj", "{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "uy.federicod.dnsmanager.logic", "uy.federicod.dnsmanager.logic\uy.federicod.dnsmanager.logic.csproj", "{C095A06D-3213-4781-BD1A-49E7CD989AC2}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {6FB22FDA-56DD-4051-BFFE-4AE89EB01959}
+	EndGlobalSection
+EndGlobal

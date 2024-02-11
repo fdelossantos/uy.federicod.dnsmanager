@@ -1,0 +1,8 @@
+{
+  "dependencies": {
+    "identityapp1": {
+      "connectionInfo": "App registration: federicod.dnsmanager, Tenant: Facultad de Ingenieria - Universidad ORT Uruguay (fi365.ort.edu.uy - Microsoft Entra ID)",
+      "type": "identityapp.default"
+    }
+  }
+}
