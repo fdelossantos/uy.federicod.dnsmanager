@@ -1,0 +1,26 @@
+﻿@model uy.federicod.dnsmanager.logic.Models.SearchModel
+@{
+    ViewData["Title"] = "Searching domain";
+
+    string domainName = Model.Domain;
+}
+<h1>Search: @domainName</h1>
+<form method="post">
+@if (Model.Available)
+{
+    <p>The doiman <strong>@domainName</strong> is availble.</p>
+        <p>
+            <a type="submit" asp-controller="Domain" asp-action="Register" asp-route-id="@domainName">Register</a>
+        </p>
+        <p>
+            <a type="submit" asp-controller="Home" asp-action="Index">Search again</a>
+        </p>
+}
+else
+{
+    <p>The doiman <strong>@domainName</strong> is not availble.</p>
+    <p>
+            <a type="submit" asp-controller="Home" asp-action="Index">Search again</a>
+        </p>
+}
+</form>

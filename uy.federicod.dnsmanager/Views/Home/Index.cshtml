@@ -1,8 +1,15 @@
-﻿@{
+﻿@model uy.federicod.dnsmanager.logic.Models.SearchModel
+@{
     ViewData["Title"] = "Home Page";
 }
 
 <div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+    <h1 class="display-4">Welcome to DNS Manager</h1>
+    <p>Search for your domain name</p>
+    <form asp-action="Index" asp-controller="Search">
+        <label asp-for="Domain" for="domain">Your requested domain:</label>
+        <input asp-for="Domain" type="text" name="domain" id="domain" />
+        <input type="submit" value="Search" />
+    </form>
+    
 </div>
