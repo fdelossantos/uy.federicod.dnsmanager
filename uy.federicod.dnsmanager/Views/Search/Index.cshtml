@@ -8,9 +8,9 @@
 <form method="post">
 @if (Model.Available)
 {
-    <p>The doiman <strong>@domainName</strong> is availble.</p>
+    <p>The doiman <strong>@domainName.@Model.ZoneName</strong> is availble.</p>
         <p>
-            <a type="submit" asp-controller="Domain" asp-action="Register" asp-route-id="@domainName">Register</a>
+            <a type="submit" asp-controller="Domain" asp-action="Register" asp-route-id="@domainName" asp-route-zone="@Model.ZoneName">Register</a>
         </p>
         <p>
             <a type="submit" asp-controller="Home" asp-action="Index">Search again</a>

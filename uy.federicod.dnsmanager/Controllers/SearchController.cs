@@ -26,7 +26,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         public async Task<ActionResult> Index(IFormCollection collection)
         {
             string domainName = collection["domain"].ToString().ToLower();
-            Service service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"]);
+            Service service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
 
             SearchModel model = await service.SearchDomainAsync(domainName, configuration["Cloudflare:ZoneId"]);
             //SearchModel model = new()
