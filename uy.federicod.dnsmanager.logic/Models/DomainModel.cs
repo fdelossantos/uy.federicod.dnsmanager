@@ -11,6 +11,7 @@ namespace uy.federicod.dnsmanager.logic.Models
         public string DomainName { get; set; }
         public string AccountId { get; set; }
         public string ZoneId { get; set; }
+        public string? ZoneName { get; set; }
         public string DelegationType { get; set; } // Delegated | Hosted
         public List<string>? NameServers { get; set; }
 

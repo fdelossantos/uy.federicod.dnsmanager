@@ -93,9 +93,20 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
         public IActionResult My()
         {
-            List<DomainModel> domains = [];
+            Service service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
+            Domains domains = new Domains(service);
 
-            return View();
+            List<DomainModel> listOfDomains = [];
+
+            listOfDomains = domains.GetDomains(User.Identity.Name);
+
+            var zones = service.GetAvailableZonesByIdAsync().Result;
+            foreach (DomainModel domain in listOfDomains)
+            {
+                domain.ZoneName = zones[domain.ZoneId];
+            }
+
+            return View(listOfDomains);
         }
     }
 }

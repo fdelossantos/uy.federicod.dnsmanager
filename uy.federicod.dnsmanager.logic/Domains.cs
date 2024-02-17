@@ -24,6 +24,35 @@ namespace uy.federicod.dnsmanager.logic
             s = service;
         }
 
+        public List<DomainModel> GetDomains(string AccountId)
+        {
+            List<DomainModel> results = [];
+            string query = "SELECT * FROM Domains WHERE AccountId = @AccountId";
+
+            SqlConnection connection = new(s.DBConnString);
+            connection.Open();
+
+            SqlCommand command = new(query, connection);
+            command.Parameters.AddWithValue("AccountId", AccountId);
+
+            SqlDataReader reader = command.ExecuteReader();
+            while(reader.Read())
+            {
+                results.Add(new DomainModel()
+                {
+                    AccountId = AccountId,
+                    DelegationType = reader["DelegationType"].ToString(),
+                    DomainName = reader["DomainName"].ToString(),
+                    ZoneId = reader["ZoneId"].ToString()
+                });
+
+            }
+            // Agregar NameServers
+
+            return results;
+
+        }
+
         public Dictionary<string, string> CreateAsync(string DomainName, string ZoneId, 
             string DelegationType, AccountModel accountModel, Service service, 
             [Optional] IPAddress HostIP, [Optional] List<string> NameServers)

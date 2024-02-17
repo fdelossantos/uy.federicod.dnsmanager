@@ -92,6 +92,34 @@ namespace uy.federicod.dnsmanager.logic
             return zones;
         }
 
+        public async Task<IDictionary<string, string>> GetAvailableZonesByIdAsync()
+        {
+            Dictionary<string, string> zones = [];
+            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones";
+
+            try
+            {
+                using SqlConnection connection = new(DBConnString);
+                connection.Open();
+
+                using SqlCommand command = new(query, connection);
+                using SqlDataReader reader = await command.ExecuteReaderAsync();
+                while (reader.Read())
+                {
+                    string zoneName = reader["ZoneName"].ToString();
+                    string zoneId = reader["ZoneId"].ToString();
+                    zones.Add(zoneId, zoneName);
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"An error occurred: {ex.Message}");
+                throw;
+            }
+
+            return zones;
+        }
+
         public async Task<SearchModel> SearchDomainAsync(string Subdomain, string ZoneId)
         {
             SearchModel searchModel = new();
