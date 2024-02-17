@@ -1,7 +1,10 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using System.Diagnostics;
+using uy.federicod.dnsmanager.logic;
 using uy.federicod.dnsmanager.Models;
+using uy.federicod.dnsmanager.UI.Controllers;
 
 namespace uy.federicod.dnsmanager.Controllers
 {
@@ -9,14 +12,21 @@ namespace uy.federicod.dnsmanager.Controllers
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
+        private readonly IConfiguration configuration;
+        private readonly Service service;
 
-        public HomeController(ILogger<HomeController> logger)
+        public HomeController(IConfiguration config, ILogger<HomeController> logger)
         {
+            configuration = config;
             _logger = logger;
+            service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> IndexAsync()
         {
+            Dictionary<string,string> allzones = (Dictionary<string, string>)await service.GetAvailableZonesAsync();
+            ViewBag.allzones = allzones;
+
             return View();
         }
 

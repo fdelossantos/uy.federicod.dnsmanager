@@ -108,5 +108,10 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
             return View(listOfDomains);
         }
+
+        public ActionResult Edit(string id)
+        {
+            return View();
+        }
     }
 }
