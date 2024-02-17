@@ -1,0 +1,24 @@
+﻿@using uy.federicod.dnsmanager.logic.Models
+@model List<DomainModel>
+@{
+
+}
+<h1>My Domains</h1>
+
+<table>
+    <tr>
+        <th>Name</th>
+        <th>Zone</th>
+        <th>Delegation Type</th>
+        <th>Action</th>
+    </tr>
+    @foreach (DomainModel domain in Model)
+    {
+        <tr>
+            <td>@domain.DomainName</td>
+            <td>@domain.ZoneId</td>
+            <td>@domain.DelegationType</td>
+            <td><a asp-action="Edit" asp-controller="Domain">Edit</a></td>
+        </tr>
+    }
+</table>

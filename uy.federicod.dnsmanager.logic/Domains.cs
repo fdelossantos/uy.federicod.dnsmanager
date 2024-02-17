@@ -1,10 +1,13 @@
-﻿using CloudFlare.Client.Api.Zones.DnsRecord;
+﻿using CloudFlare.Client.Api.Zones;
+using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Client.Zones;
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using uy.federicod.dnsmanager.logic.Models;
@@ -21,49 +24,147 @@ namespace uy.federicod.dnsmanager.logic
             s = service;
         }
 
-        public async Task<DomainModel?> CreateAsync(string DomainName, string ZoneId, string AccountId, IPAddress iPAddress)
+        public Dictionary<string, string> CreateAsync(string DomainName, string ZoneId, 
+            string DelegationType, AccountModel accountModel, Service service, 
+            [Optional] IPAddress HostIP, [Optional] List<string> NameServers)
         {
-            DomainModel model = new DomainModel();
-            string query = "INSERT INTO dbo.Domains (DomainName, ZoneId, AccountId) VALUES (@DomainName, @ZoneId, @AccountId)";
+            // Obtiene o crea la cuenta de usuario
+            AccountModel realAccount = service.GetAccountOrCreate(accountModel.AccountId, accountModel.DisplayName);
 
-            try
+            // Crea un modelDomain para usar en las registraciones
+            DomainModel model = new()
             {
-                using SqlConnection connection = new(s.DBConnString);
-                connection.Open();
+                DomainName = DomainName,
+                ZoneId = ZoneId,
+                AccountId = accountModel.AccountId,
+                DelegationType = DelegationType
+            };
+            if (NameServers != null)
+            {
+                model.NameServers = NameServers;
+            }
 
-                using SqlCommand command = new(query, connection);
-                command.Parameters.AddWithValue("DomainName", DomainName);
-                command.Parameters.AddWithValue("ZoneId", ZoneId);
-                command.Parameters.AddWithValue("AccountId", AccountId);
+            Dictionary<string, string> results = [];
 
-                await command.ExecuteNonQueryAsync();
-
-                NewDnsRecord dnsRecord = new()
+            // Registra el dominio en la base datos
+            if (AddToDB(model, realAccount))
+            {
+                // Si pudo agregarlo, lo lleva a Cloudflare 
+                if (model.DelegationType == "Hosted")
                 {
-                    Name = DomainName,
-                    Content = iPAddress.ToString(),
-                    Priority = 0,
-                    Proxied = false,
-                    Ttl = 1,
-                    Type = CloudFlare.Client.Enumerators.DnsRecordType.A,
-                    Comment = AccountId
-                };
-                var cfresult = await s.client.Zones.DnsRecords.AddAsync(ZoneId, dnsRecord);
-                if(cfresult.Success)
-                {
-                    return model;
+                    // Agrega un registro A
+                    if(RegisterHosted(model, HostIP))
+                    {
+                        results.Add(model.DomainName, "Ok");
+                    }
+                    else
+                    {
+                        results.Add(model.DomainName, "Failed");
+                    }
                 }
                 else
                 {
-                    throw new Exception(cfresult.Errors[0].Message);
+                    // Delega el dominio en una lista de NS
+                    results = RegisterDelegated(model);
                 }
             }
-            catch (Exception ex)
+            else
             {
-                Console.WriteLine($"An error occurred: {ex.Message}");
+                throw new Exception("Can not create domain");
+            }
+            return results;
+        }
+
+        private bool AddToDB(DomainModel domainModel, AccountModel accountModel)
+        {
+            try
+            {
+                string query = "INSERT INTO dbo.Domains (DomainName, ZoneId, AccountId, DelegationType) VALUES (@DomainName, @ZoneId, @AccountId, @DelegationType)";
+                SqlConnection connection = new(s.DBConnString);
+                connection.Open();
+
+                SqlCommand command = new(query, connection);
+                command.Parameters.AddWithValue("DomainName", domainModel.DomainName);
+                command.Parameters.AddWithValue("ZoneId", domainModel.ZoneId);
+                command.Parameters.AddWithValue("AccountId", accountModel.AccountId);
+                command.Parameters.AddWithValue("DelegationType", domainModel.DelegationType);
+
+                int result = command.ExecuteNonQuery();
+
+                if(result > 0)
+                {
+                    return true;
+                }
+            }
+            catch (Exception)
+            {
                 throw;
             }
 
+            return false;
         }
+
+        private Dictionary<string, string>? RegisterDelegated(DomainModel model)
+        {
+            bool atLeastOneNameserver = false;
+            Dictionary<string, string> results = new();
+
+            foreach (string NameServer in model.NameServers)
+            {
+                NewDnsRecord dnsRecord = new()
+                {
+                    Name = model.DomainName,
+                    Content = NameServer,
+                    Priority = 0,
+                    Proxied = false,
+                    Ttl = 1,
+                    Type = CloudFlare.Client.Enumerators.DnsRecordType.Ns,
+                    Comment = model.AccountId
+                };
+                var cfresult = s.client.Zones.DnsRecords.AddAsync(model.ZoneId, dnsRecord).Result;
+
+                if (cfresult.Success)
+                {
+                    atLeastOneNameserver = true;
+                }
+                else
+                {
+                    results.Add(NameServer, cfresult.Messages.ToString());
+                }
+            }
+
+            if (!atLeastOneNameserver)
+            {
+                return results;
+            }
+            else
+            {
+                return null;
+            }
+        }
+
+        private bool RegisterHosted(DomainModel model, IPAddress iPAddress)
+        {
+            NewDnsRecord dnsRecord = new()
+            {
+                Name = model.DomainName,
+                Content = iPAddress.ToString(),
+                Priority = 0,
+                Proxied = false,
+                Ttl = 1,
+                Type = CloudFlare.Client.Enumerators.DnsRecordType.A,
+                Comment = model.AccountId
+            };
+            var cfresult = s.client.Zones.DnsRecords.AddAsync(model.ZoneId, dnsRecord).Result;
+            if (cfresult.Success)
+            {
+                return true;
+            }
+            else
+            {
+                throw new Exception(cfresult.Errors[0].Message);
+            }
+        }
+
     }
 }

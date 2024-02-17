@@ -16,6 +16,55 @@ namespace uy.federicod.dnsmanager.logic
             DBConnString = dbconnstring;
         }
 
+        public AccountModel GetAccountOrCreate(string AccountId, string DisplayName)
+        {
+            AccountModel account = new AccountModel();
+
+            string query = "SELECT * FROM dbo.Accounts WHERE AccountId = @AccountId";
+
+            SqlConnection connection = new(DBConnString);
+            connection.Open();
+
+            SqlCommand command = new(query, connection);
+            command.Parameters.AddWithValue("AccountId", AccountId);
+            SqlDataReader reader = command.ExecuteReader();
+
+            while (reader.Read())
+            {
+                account.AccountId = reader["AccountId"].ToString();
+                account.DisplayName = reader["DisplayName"].ToString();
+                account.Created = (DateTime)reader["Created"];
+            }
+            reader.Close();
+
+            if (string.IsNullOrEmpty(account.AccountId))
+            {
+                try
+                {
+                    DateTime created = DateTime.Now;
+                    query = "INSERT INTO dbo.Accounts (AccountId, DisplayName, Created) VALUES (@AccountId, @DisplayName, @Created)";
+                    SqlCommand commandc = new(query, connection);
+                    commandc.Parameters.AddWithValue("AccountId", AccountId);
+                    commandc.Parameters.AddWithValue("DisplayName", DisplayName);
+                    commandc.Parameters.AddWithValue("Created", created);
+
+                    int result = commandc.ExecuteNonQuery();
+
+                    account.Created = created;
+                    account.AccountId = AccountId;
+                    account.DisplayName = DisplayName;
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine(ex.Message);
+                    throw;
+                }
+
+            }
+
+            return account;
+        }
+
         public async Task<IDictionary<string, string>> GetAvailableZonesAsync() {
             Dictionary<string, string> zones = [];
             string query = "SELECT ZoneId, ZoneName FROM dbo.Zones";
