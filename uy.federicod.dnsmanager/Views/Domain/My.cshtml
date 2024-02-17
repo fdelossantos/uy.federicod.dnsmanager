@@ -12,13 +12,17 @@
         <th>Delegation Type</th>
         <th>Action</th>
     </tr>
-    @foreach (DomainModel domain in Model)
+    @if (Model != null)
     {
-        <tr>
-            <td>@domain.DomainName</td>
-            <td>@domain.ZoneId</td>
-            <td>@domain.DelegationType</td>
-            <td><a asp-action="Edit" asp-controller="Domain">Edit</a></td>
-        </tr>
+        foreach (DomainModel domain in Model)
+        {
+            <tr>
+                <td>@domain.DomainName</td>
+                <td>@domain.ZoneId</td>
+                <td>@domain.DelegationType</td>
+                <td><a asp-action="Edit" asp-controller="Domain">Edit</a></td>
+            </tr>
+        }
     }
+
 </table>

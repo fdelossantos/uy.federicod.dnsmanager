@@ -78,7 +78,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
                         DelegationType, account, service, NameServers: ns);
             }
 
-            return View();
+            return RedirectToAction("My");
         }
         public async Task<IActionResult> RegisterAsync(string id, string zone)
         {
@@ -93,6 +93,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
         public IActionResult My()
         {
+            List<DomainModel> domains = [];
 
             return View();
         }
