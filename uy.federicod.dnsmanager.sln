@@ -3,9 +3,11 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.8.34309.116
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "uy.federicod.dnsmanager.UI", "uy.federicod.dnsmanager\uy.federicod.dnsmanager.UI.csproj", "{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "uy.federicod.dnsmanager.UI", "uy.federicod.dnsmanager\uy.federicod.dnsmanager.UI.csproj", "{4526C6DA-6CE0-41D1-A8EA-9981FD40EF2C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "uy.federicod.dnsmanager.logic", "uy.federicod.dnsmanager.logic\uy.federicod.dnsmanager.logic.csproj", "{C095A06D-3213-4781-BD1A-49E7CD989AC2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "uy.federicod.dnsmanager.logic", "uy.federicod.dnsmanager.logic\uy.federicod.dnsmanager.logic.csproj", "{C095A06D-3213-4781-BD1A-49E7CD989AC2}"
+EndProject
+Project("{00D1A9C2-B5F0-4AF3-8072-F6C62B433612}") = "dnsmanagerdb", "dnsmanagerdb\dnsmanagerdb.sqlproj", "{851B16C1-3B28-4832-8FFC-75DAC453DED6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,12 @@ Global
 		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{851B16C1-3B28-4832-8FFC-75DAC453DED6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{851B16C1-3B28-4832-8FFC-75DAC453DED6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{851B16C1-3B28-4832-8FFC-75DAC453DED6}.Debug|Any CPU.Deploy.0 = Debug|Any CPU
+		{851B16C1-3B28-4832-8FFC-75DAC453DED6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{851B16C1-3B28-4832-8FFC-75DAC453DED6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{851B16C1-3B28-4832-8FFC-75DAC453DED6}.Release|Any CPU.Deploy.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
