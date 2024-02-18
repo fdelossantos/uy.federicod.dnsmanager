@@ -108,7 +108,7 @@
                             @if (User.Identity.IsAuthenticated)
                             {
                                 <li class="dropdown-header">
-                                    <h6>@User.Claims.FirstOrDefault(c => c.Type == "name").Value!</h6>
+                                    <strong>@User.Identity.Name</strong>
                                 </li>
                                 <li>
                                     <hr class="dropdown-divider">

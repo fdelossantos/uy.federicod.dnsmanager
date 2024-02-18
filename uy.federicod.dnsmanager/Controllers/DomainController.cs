@@ -136,5 +136,15 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             ViewBag.message = "The domain has been deleted";
             return RedirectToAction("My");
         }
+
+        public ActionResult Manage(string id, string zonename)
+        {
+            Domains domains = new Domains(service);
+            var zones = service.GetAvailableZonesAsync().Result;
+            DomainModel domainModel = domains.GetUserDomain(id, zones[zonename], User.Identity.Name);
+            domainModel.ZoneName = zonename;
+
+            return View(domainModel);
+        }
     }
 }
