@@ -115,11 +115,11 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             return View(listOfDomains);
         }
 
-        public ActionResult Edit(string id, string zonename)
+        public async Task<ActionResult> EditAsync(string id, string zonename)
         {
             Domains domains = new Domains(service);
             var zones = service.GetAvailableZonesAsync().Result;
-            DomainModel domainModel = domains.GetUserDomain(id, zones[zonename], User.Identity.Name);
+            DomainModel domainModel = await domains.GetUserDomainAsync(id, zones[zonename], User.Identity.Name);
             domainModel.ZoneName = zonename;
 
             return View(domainModel);
@@ -127,22 +127,24 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public ActionResult Delete(string id, string zonename)
+        public async Task<ActionResult> DeleteAsync(string id, string zonename)
         {
             Domains domains = new Domains(service);
             var zones = service.GetAvailableZonesAsync().Result;
-            domains.DeleteUserDomain(id, zones[zonename], zonename, User.Identity.Name);
+            await domains.DeleteUserDomainAsync(id, zones[zonename], zonename, User.Identity.Name);
 
             ViewBag.message = "The domain has been deleted";
             return RedirectToAction("My");
         }
 
-        public ActionResult Manage(string id, string zonename)
+        public async Task<ActionResult> ManageAsync(string id, string zonename)
         {
             Domains domains = new Domains(service);
-            var zones = service.GetAvailableZonesAsync().Result;
-            DomainModel domainModel = domains.GetUserDomain(id, zones[zonename], User.Identity.Name);
+            var zones = await service.GetAvailableZonesAsync();
+            DomainModel domainModel = await domains.GetUserDomainAsync(id, zones[zonename], User.Identity.Name);
             domainModel.ZoneName = zonename;
+
+            ViewBag.Records = await domains.GetRecordsAsync(id, zones[zonename]);
 
             return View(domainModel);
         }

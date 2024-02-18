@@ -55,7 +55,7 @@ namespace uy.federicod.dnsmanager.logic
 
         }
 
-        public DomainModel? GetUserDomain(string DomainName, string ZoneId , string AccountId)
+        public async Task<DomainModel?> GetUserDomainAsync(string DomainName, string ZoneId , string AccountId)
         {
             DomainModel result = new();
             string query = "SELECT * FROM Domains WHERE AccountId = @AccountId AND ZoneId = @ZoneId AND DomainName = @DomainName";
@@ -81,8 +81,12 @@ namespace uy.federicod.dnsmanager.logic
                 };
                 count++;
             }
-            
-            if(count > 0)
+
+            // Agregar nameservers
+            result.NameServers = await GetNameServersAsync(DomainName, ZoneId);
+
+
+            if (count > 0)
                 return result;
             else 
                 return null; 
@@ -231,10 +235,10 @@ namespace uy.federicod.dnsmanager.logic
             }
         }
 
-        public bool DeleteUserDomain(string DomainName, string ZoneId, string ZoneName, string AccountId)
+        public async Task<bool> DeleteUserDomainAsync(string DomainName, string ZoneId, string ZoneName, string AccountId)
         {
             bool removedFromDB = false;
-            DomainModel domain = GetUserDomain(DomainName, ZoneId, AccountId);
+            DomainModel domain = await GetUserDomainAsync(DomainName, ZoneId, AccountId);
 
             // Remove from DB
             try
@@ -276,6 +280,53 @@ namespace uy.federicod.dnsmanager.logic
             }
 
             return true;
+        }
+
+        public async Task<List<string>> GetRecordsAsync(string DomainName, string ZoneId)
+        {
+            // Get ZoneName
+            var zones = await s.GetAvailableZonesByIdAsync();
+
+            List<string> result = [];
+
+            var dnsRecordFilter = new DnsRecordFilter
+            {
+                Match = CloudFlare.Client.Enumerators.MatchType.All,
+                Name = $"{DomainName}.{zones[ZoneId]}",
+                
+            };
+            var record = await s.client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter);
+
+            foreach (var item in record.Result)
+            {
+                result.Add(item.Content);
+            }
+
+            return result;
+        }
+
+
+        private async Task<List<string>> GetNameServersAsync(string DomainName, string ZoneId)
+        {
+            // Get ZoneName
+            var zones = await s.GetAvailableZonesByIdAsync();
+
+            List<string> result = [];
+
+            var dnsRecordFilter = new DnsRecordFilter
+            {
+                Match = CloudFlare.Client.Enumerators.MatchType.All,
+                Name = $"{DomainName}.{zones[ZoneId]}",
+                Type = DnsRecordType.Ns
+            };
+            var record = await s.client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter);
+            
+            foreach (var item in record.Result)
+            {
+                result.Add(item.Content);
+            }
+
+            return result;
         }
     }
 }
