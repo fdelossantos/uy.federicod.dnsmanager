@@ -11,6 +11,8 @@
     string actionName = "";
     string controllerName = "";
     string showDomain = "";
+    string showSearch = "";
+    string collapsedHome = "";
     string collapsedSearch = "";
     string collapsedMy = "";
     var controllerActionDescriptor = ViewContext.ActionDescriptor as ControllerActionDescriptor;
@@ -21,13 +23,20 @@
     }
     switch (controllerName)
     {
+        case "Search":
+            showSearch = "show";
+            collapsedMy = "collapsed";
+            collapsedHome = "collapsed";
+            break;
         case "Domain":
             showDomain = "show";
+            collapsedHome = "collapsed";
             collapsedSearch = "collapsed";
             break;
 
         default:
             collapsedMy = "collapsed";
+            collapsedSearch = "collapsed";
             break;
     }
 
@@ -137,7 +146,13 @@
             <ul class="sidebar-nav" id="sidebar-nav">
 
                 <li class="nav-item">
-                    <a class="nav-link @collapsedSearch" asp-area="" asp-controller="Home" asp-action="Index">
+                    <a class="nav-link @collapsedHome" asp-area="" asp-controller="Home" asp-action="Index">
+                        <i class="bi bi-grid"></i>
+                        <span>Home</span>
+                    </a>
+                </li><!-- End Dashboard Nav -->
+                <li class="nav-item">
+                    <a class="nav-link @collapsedSearch" asp-area="" asp-controller="Search" asp-action="Index">
                         <i class="bi bi-grid"></i>
                         <span>Search</span>
                     </a>

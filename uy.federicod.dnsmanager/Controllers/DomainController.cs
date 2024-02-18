@@ -31,34 +31,40 @@ namespace uy.federicod.dnsmanager.UI.Controllers
                 AccountId = User.Identity.Name,
                 DisplayName = User.Claims.FirstOrDefault(c => c.Type == "name").Value
             };
+            IPAddress iPAddress = new(0);
+            string DelegationType = collection["DelegationType"];
+            string zonaname = collection["zonename"];
+            var zones = service.GetAvailableZonesAsync().Result;
 
             if (collection["Accept"] == "Accept")
             {
                 // DomainName
                 string domainname = collection["domainname"];
                 // IPAddress si es Hosted
-                IPAddress iPAddress;
-                try
+                
+                if (DelegationType == "Hosted")
                 {
-                    iPAddress = IPAddress.Parse(collection["IPAddress"]);
-                }
-
-                catch (Exception ex)
-                {
-                    // Si la IP no es válida, hay que avisarle.
-                    ViewBag.Message = ex.Message;
-                    SearchModel searchModel = new()
+                    try
                     {
-                        Domain = domainname,
-                        Available = true,
-                        ZoneId = configuration["Cloudflare:ZoneId"], // Estos valores son temporales
-                        ZoneName = configuration["Cloudflare:ZoneName"]
-                    };
+                        iPAddress = IPAddress.Parse(collection["IPAddress"]);
+                    }
 
-                    return View(searchModel);
+                    catch (Exception ex)
+                    {
+                        // Si la IP no es válida, hay que avisarle.
+                        ViewBag.Message = ex.Message;
+                        SearchModel searchModel = new()
+                        {
+                            Domain = domainname,
+                            Available = true,
+                            ZoneId = configuration["Cloudflare:ZoneId"], // Estos valores son temporales
+                            ZoneName = configuration["Cloudflare:ZoneName"]
+                        };
+
+                        return View(searchModel);
+                    }
                 }
-
-                string DelegationType = collection["DelegationType"];
+                
                 List<string> ns = [];
                 if(DelegationType == "Delegated")
                 {
@@ -68,18 +74,18 @@ namespace uy.federicod.dnsmanager.UI.Controllers
                     }
                 }
 
-
                 Dictionary<string, string> resultados = [];
                 if (DelegationType == "Hosted")
-                    resultados = domains.CreateAsync(domainname, configuration["Cloudflare:ZoneId"], 
+                    resultados = domains.CreateAsync(domainname, zones[zonaname], 
                         DelegationType, account, service, HostIP: iPAddress);
                 else
-                    resultados = domains.CreateAsync(domainname, configuration["Cloudflare:ZoneId"],
+                    resultados = domains.CreateAsync(domainname, zones[zonaname],
                         DelegationType, account, service, NameServers: ns);
             }
 
             return RedirectToAction("My");
         }
+        
         public async Task<IActionResult> RegisterAsync(string id, string zone)
         {
             string domainName = id.ToString().ToLower();

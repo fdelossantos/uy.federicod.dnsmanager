@@ -3,27 +3,59 @@
     ViewData["Title"] = "Register domain";
 
 }
-<h1>Register domain</h1>
+<div class="pagetitle">
+    <h1>@ViewData["Title"]</h1>
+</div><!-- End Page Title -->
 
-<p>Please accept the Terms and Conditions</p>
-<div>This service is provided as-is to active students in Universidad ORT Uruguay.</div>
+<section class="section">
+    <div class="row">
+        <div class="col-lg-6">
 
-@if (!string.IsNullOrEmpty(ViewBag.Message)){
-    <p style="color: red">@ViewBag.Message</p>
-}
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Domain: <strong>@(Model.Domain).@Model.ZoneName</strong></h5>
+                    @if (!string.IsNullOrEmpty(ViewBag.Message))
+                    {
+                        <p style="color: red">@ViewBag.Message</p>
+                    }
+                    <form asp-action="Register" asp-controller="Domain">
+                        <div class="row mb-3">
+                            <label for="DelegationType" class="col-sm-3 col-form-label">Delegation type</label>
+                            <div class="col-sm-9">
+                                <select id="DelegationType" name="DelegationType" class="form-select" aria-label="Choose the type of delegation.">
+                                    <option value="Hosted">Hosted</option>
+                                    <option value="Delegated">Delegated</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div class="row mb-3">
+                            <p>If you selected Hosted, you have to provide an IP Address.</p>
+                            <label for="IPAddress" class="col-sm-3 col-form-label">IP Address</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control" name="IPAddress" id="IPAddress" />
+                            </div>
+                        </div>
+                        <p>&nbsp;</p>
+                        <div class="row mb-3">
+                            <p>If you selected Delegated, you have to provide the FQDN of at least one Name Server.</p>
+                            <label for="nameservers" class="col-sm-3 col-form-label">Name Servers</label>
+                            <div class="col-sm-9">
+                                <textarea class="form-control" id="nameservers" name="nameservers" style="height: 100px"></textarea>
+                            </div>
+                        </div>
+                        
+                        <input type="hidden" name="domainname" id="domainname" value="@Model.Domain" />
+                        <input type="hidden" name="zonename" id="zonename" value="@Model.ZoneName" />
+                        <p>&nbsp;</p>
+                        <input class="btn btn-primary" type="submit" value="Accept" name="Accept" id="Accept" />
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
 
-<form asp-action="Register" asp-controller="Domain">
-    <select id="DelegationType" name="DelegationType">
-        <option value="Hosted">Hosted</option>
-        <option value="Delegated">Delegated</option>
-    </select>
-    <p>If you selected Hosted</p>
-    <label>IP Address:</label>
-    <input type="text" name="IPAddress" id="IPAddress" />
-    <p>If you selected delegated</p>
-    <label>List of Name Servers:</label>
-    <textarea id="nameservers" name="nameservers"></textarea>
-    <input type="hidden" name="domainname" id="domainname" value="@Model.Domain" />
-    <p>Domain: <strong>@Model.Domain</strong><strong>.@Model.ZoneName</strong></p>
-    <input type="submit" value="Accept" name="Accept" id="Accept" />
-</form>
+
+
+

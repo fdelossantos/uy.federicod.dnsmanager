@@ -22,10 +22,11 @@ namespace uy.federicod.dnsmanager.Controllers
             service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
         }
 
-        public async Task<IActionResult> IndexAsync()
+        [AllowAnonymous]
+        public IActionResult Index()
         {
-            Dictionary<string,string> allzones = (Dictionary<string, string>)await service.GetAvailableZonesAsync();
-            ViewBag.allzones = allzones;
+            //Dictionary<string,string> allzones = (Dictionary<string, string>)await service.GetAvailableZonesAsync();
+            //ViewBag.allzones = allzones;
 
             return View();
         }

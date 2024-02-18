@@ -1,4 +1,6 @@
 ﻿using CloudFlare.Client;
+using CloudFlare.Client.Api.Zones.DnsRecord;
+using CloudFlare.Client.Enumerators;
 using System.Collections;
 using System.Data.SqlClient;
 using uy.federicod.dnsmanager.logic.Models;
@@ -128,28 +130,37 @@ namespace uy.federicod.dnsmanager.logic
             CancellationToken ct = default;
 
             var zone = await client.Zones.GetDetailsAsync(ZoneId, ct);
-            if (zone.Success)
-            {
-                searchModel.Available = true;
-            }
-            else
-            {
-                searchModel.Available = false;
-            }
             searchModel.ZoneName = zone.Result.Name;
             searchModel.ZoneId = ZoneId;
 
-            //foreach (var zone in zones.Result)
-            //{
-            //    var dnsRecords = await client.Zones.DnsRecords.GetAsync(zone.Id, cancellationToken: ct);
-            //    foreach (var dnsRecord in dnsRecords.Result)
-            //    {
-            //        Console.WriteLine(dnsRecord.Name);
-            //    }
+            // Buscar si está alojado
+            var dnsRecordFilter = new DnsRecordFilter { 
+                Match = CloudFlare.Client.Enumerators.MatchType.All, 
+                Name = $"{Subdomain}.{zone.Result.Name}", 
+                Type = DnsRecordType.A 
+            };
+            var record = await client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter);
+            if (record.Result.Count > 0)
+            {
+                searchModel.Available = false;
+                return searchModel;
+            }
 
-            //    Console.WriteLine(zone.Name);
-            //}
+            // Buscar si está delegado
+            dnsRecordFilter = new DnsRecordFilter
+            {
+                Match = CloudFlare.Client.Enumerators.MatchType.All,
+                Name = $"{Subdomain}.{zone.Result.Name}",
+                Type = DnsRecordType.Ns
+            };
+            record = await client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter);
+            if (record.Result.Count > 0)
+            {
+                searchModel.Available = false;
+                return searchModel;
+            }
 
+            searchModel.Available = true;
             return searchModel;
         }
     }

@@ -1,0 +1,20 @@
+﻿@using uy.federicod.dnsmanager.logic.Models
+@model SearchModel
+@{
+    ViewData["Title"] = "Search domain";
+}
+<div class="pagetitle">
+    <h1>@ViewData["Title"]</h1>
+</div><!-- End Page Title -->
+<section class="section">
+    <div class="row">
+        <div class="col-lg-6">
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">The subdomian <strong><span>@Model.Domain</span>.<span>@Model.ZoneName</span></strong> is not available.</h5>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>

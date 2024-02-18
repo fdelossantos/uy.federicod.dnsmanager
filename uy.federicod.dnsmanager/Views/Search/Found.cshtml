@@ -1,0 +1,53 @@
+﻿@using uy.federicod.dnsmanager.logic.Models
+@model List<SearchModel>
+@{
+    ViewData["Title"] = "Searching domain";
+
+    string domainName = Model[0].Domain;
+}
+<div class="pagetitle">
+    <h1>@ViewData["Title"]</h1>
+</div><!-- End Page Title -->
+<section class="section">
+    <div class="row">
+        <div class="col-lg-6">
+
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">Your search result for @domainName:</h5>
+                    <form method="post">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Subdomain</th>
+                                    <th>Zone</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            @foreach(var result in Model)
+                            {
+                                    <tr>
+                                        <td>@result.Domain</td>
+                                        <td>@result.ZoneName</td>
+                                        @if (result.Available)
+                                        {
+                                            <td><a class="btn btn-primary" asp-action="Register" asp-controller="Domain"
+                                            asp-route-id="@result.Domain" asp-route-zone="@result.ZoneName">Register</a></td>
+                                        }
+                                        else
+                                        {
+                                            <td><button class="btn btn-secondary disabled" value="Register">Not Available</button></td>
+                                        }
+                                    </tr>
+                            }
+                            </tbody>
+                        </table>
+                        
+                    </form>
+                    <a asp-controller="Search" asp-action="Index">Search again</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
