@@ -1,11 +1,11 @@
 ﻿@using System.Security.Principal
 @using Microsoft.AspNetCore.Mvc.Controllers
 @{
-    string sidebarClass = "toggle-sidebar";
+    string sidebarClass = "";// "toggle-sidebar";
     //  class="toggle-sidebar"
     if (User.Identity.IsAuthenticated)
     {
-        sidebarClass = "";
+        //sidebarClass = "";
     }
 
     string actionName = "";
@@ -162,120 +162,7 @@
                         <span>My Domains</span>
                     </a>
                 </li><!-- End Dashboard Nav -->
-@*                 @try
-                {
-                        <li class="nav-item">
-                            <a class="nav-link @collapsedCountry" data-bs-target="#countries-nav" data-bs-toggle="collapse" href="#">
-                                <i class="bi bi-menu-button-wide"></i><span>Countries</span><i class="bi bi-chevron-down ms-auto"></i>
-                            </a>
-                            <ul id="countries-nav" class="nav-content collapse @showCountry" data-bs-parent="#sidebar-nav">
-                                <li>
-                                    @if (actionName == "Index" && controllerName == "Country")
-                                    {
-                                        <a asp-area="" asp-controller="Country" asp-action="Index" class="active">
-                                            <i class="bi bi-list-ul"></i><span>List</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <a asp-area="" asp-controller="Country" asp-action="Index">
-                                            <i class="bi bi-list-ul"></i><span>List</span>
-                                        </a>
-                                    }
-                                </li>
-                                <li>
-                                    @if (actionName == "Create" && controllerName == "Country")
-                                    {
-                                        <a asp-area="" asp-controller="Country" asp-action="Create" class="active">
-                                            <i class="bi bi-plus"></i><span>Create</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <a asp-area="" asp-controller="Country" asp-action="Create">
-                                            <i class="bi bi-plus"></i><span>Create</span>
-                                        </a>
-                                    }
-                                </li>
-                                <li>
-                                    @if (actionName == "Batch" && controllerName == "Country")
-                                    {
-                                        <a asp-area="" asp-controller="Country" asp-action="Batch" class="active">
-                                            <i class="bi bi-cloud-arrow-up"></i><span>Batch</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <a asp-area="" asp-controller="Country" asp-action="Batch">
-                                            <i class="bi bi-cloud-arrow-up"></i><span>Batch</span>
-                                        </a>
-                                    }
-                                </li>
-                            </ul>
-                        </li>
-
-                        <!-- End Countries Nav -->
-
-                        <li class="nav-item">
-                            <a class="nav-link @collapsedUser" data-bs-target="#users-nav" data-bs-toggle="collapse" href="#">
-                                <i class="bi bi-menu-button-wide"></i><span>Users</span><i class="bi bi-chevron-down ms-auto"></i>
-                            </a>
-                            <ul id="users-nav" class="nav-content collapse @showUser" data-bs-parent="#sidebar-nav">
-                                <li>
-                                    @if (actionName == "Index" && controllerName == "User")
-                                    {
-                                        <a asp-area="" asp-controller="User" asp-action="Index" class="active">
-                                            <i class="bi bi-list-ul"></i><span>List</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <a asp-area="" asp-controller="User" asp-action="Index">
-                                            <i class="bi bi-list-ul"></i><span>List</span>
-                                        </a>
-                                    }
-
-                                </li>
-                                <li>
-                                    @if (actionName == "Create" && controllerName == "User")
-                                    {
-                                        <a asp-area="" asp-controller="User" asp-action="Create" class="active">
-                                            <i class="bi bi-plus"></i><span>Create</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <a asp-area="" asp-controller="User" asp-action="Create">
-                                            <i class="bi bi-plus"></i><span>Create</span>
-                                        </a>
-                                    }
-                                </li>
-                                <li>
-                                    @if (actionName == "Batch" && controllerName == "User")
-                                    {
-                                        <a asp-area="" asp-controller="User" asp-action="Batch" class="active">
-                                            <i class="bi bi-cloud-arrow-up"></i><span>Batch</span>
-                                        </a>
-                                    }
-                                    else
-                                    {
-                                        <a asp-area="" asp-controller="User" asp-action="Batch">
-                                            <i class="bi bi-cloud-arrow-up"></i><span>Batch</span>
-                                        </a>
-                                    }
-                                </li>
-                            </ul>
-                        </li>
-
-                        <!-- End Users Nav -->
-                }
-                catch
-                {
-
-                }
- *@
             </ul>
-
         </aside>
 
         <!-- End Sidebar-->
