@@ -34,8 +34,8 @@
                                         <td>@domain.DomainName</td>
                                         <td>@domain.ZoneName</td>
                                         <td>@domain.DelegationType</td>
-                                        <td><a asp-action="Edit" asp-controller="Domain">Edit</a></td>
-                                        <td><button type="button" class="btn btn-secondary">Manage DNS</button></td>
+                                        <td><a asp-action="Edit" asp-controller="Domain" asp-route-id="@domain.DomainName" asp-route-zonename="@domain.ZoneName">Edit</a></td>
+                                        <td><button type="button" class="btn btn-primary">Manage DNS</button></td>
                                         </tr>
                                     }
                                 }

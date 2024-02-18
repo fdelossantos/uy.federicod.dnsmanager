@@ -10,11 +10,13 @@ namespace uy.federicod.dnsmanager.UI.Controllers
     {
         private readonly IConfiguration configuration;
         private readonly ILogger<DomainController> _logger;
+        private readonly Service service;
 
         public DomainController(IConfiguration config, ILogger<DomainController> logger)
         {
             configuration = config;
             _logger = logger;
+             service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
         }
 
         [HttpPost]
@@ -22,7 +24,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         public IActionResult Register(IFormCollection collection)
         {
             // Inicializa objetos
-            Service service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
+            
             Domains domains = new Domains(service);
 
             // Prepara un AccountModel para buscar o crear el usuario
@@ -57,8 +59,8 @@ namespace uy.federicod.dnsmanager.UI.Controllers
                         {
                             Domain = domainname,
                             Available = true,
-                            ZoneId = configuration["Cloudflare:ZoneId"], // Estos valores son temporales
-                            ZoneName = configuration["Cloudflare:ZoneName"]
+                            ZoneId = zones[zonaname],
+                            ZoneName = zonaname
                         };
 
                         return View(searchModel);
@@ -89,7 +91,6 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         public async Task<IActionResult> RegisterAsync(string id, string zone)
         {
             string domainName = id.ToString().ToLower();
-            Service service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
             var zones = await service.GetAvailableZonesAsync();
 
             SearchModel model = await service.SearchDomainAsync(domainName, zones[zone].ToLower());
@@ -99,7 +100,6 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
         public IActionResult My()
         {
-            Service service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
             Domains domains = new Domains(service);
 
             List<DomainModel> listOfDomains = [];
@@ -115,9 +115,26 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             return View(listOfDomains);
         }
 
-        public ActionResult Edit(string id)
+        public ActionResult Edit(string id, string zonename)
         {
-            return View();
+            Domains domains = new Domains(service);
+            var zones = service.GetAvailableZonesAsync().Result;
+            DomainModel domainModel = domains.GetUserDomain(id, zones[zonename], User.Identity.Name);
+            domainModel.ZoneName = zonename;
+
+            return View(domainModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public ActionResult Delete(string id, string zonename)
+        {
+            Domains domains = new Domains(service);
+            var zones = service.GetAvailableZonesAsync().Result;
+            domains.DeleteUserDomain(id, zones[zonename], zonename, User.Identity.Name);
+
+            ViewBag.message = "The domain has been deleted";
+            return RedirectToAction("My");
         }
     }
 }

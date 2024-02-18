@@ -1,12 +1,14 @@
 ﻿using CloudFlare.Client.Api.Zones;
 using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Client.Zones;
+using CloudFlare.Client.Enumerators;
 using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data.SqlClient;
 using System.Linq;
 using System.Net;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
@@ -50,6 +52,40 @@ namespace uy.federicod.dnsmanager.logic
             // Agregar NameServers
 
             return results;
+
+        }
+
+        public DomainModel? GetUserDomain(string DomainName, string ZoneId , string AccountId)
+        {
+            DomainModel result = new();
+            string query = "SELECT * FROM Domains WHERE AccountId = @AccountId AND ZoneId = @ZoneId AND DomainName = @DomainName";
+
+            SqlConnection connection = new(s.DBConnString);
+            connection.Open();
+
+            SqlCommand command = new(query, connection);
+            command.Parameters.AddWithValue("DomainName", DomainName);
+            command.Parameters.AddWithValue("ZoneId", ZoneId);
+            command.Parameters.AddWithValue("AccountId", AccountId);
+
+            SqlDataReader reader = command.ExecuteReader();
+            int count = 0;
+            while (reader.Read())
+            {
+                result = new DomainModel()
+                {
+                    AccountId = AccountId,
+                    DelegationType = reader["DelegationType"].ToString(),
+                    DomainName = reader["DomainName"].ToString(),
+                    ZoneId = reader["ZoneId"].ToString()
+                };
+                count++;
+            }
+            
+            if(count > 0)
+                return result;
+            else 
+                return null; 
 
         }
 
@@ -195,5 +231,51 @@ namespace uy.federicod.dnsmanager.logic
             }
         }
 
+        public bool DeleteUserDomain(string DomainName, string ZoneId, string ZoneName, string AccountId)
+        {
+            bool removedFromDB = false;
+            DomainModel domain = GetUserDomain(DomainName, ZoneId, AccountId);
+
+            // Remove from DB
+            try
+            {
+                string query = "DELETE FROM Domains WHERE DomainName = @DomainName AND ZoneId = @ZoneId AND AccountId = @AccountId";
+
+                SqlConnection connection = new(s.DBConnString);
+                connection.Open();
+
+                SqlCommand command = new(query, connection);
+                command.Parameters.AddWithValue("DomainName", DomainName);
+                command.Parameters.AddWithValue("ZoneId", ZoneId);
+                command.Parameters.AddWithValue("AccountId", AccountId);
+
+                int result = command.ExecuteNonQuery();
+
+                if (result > 0)
+                {
+                    removedFromDB = true;
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+
+            // Remove from CF
+
+            var dnsRecordFilter = new DnsRecordFilter
+            {
+                Match = CloudFlare.Client.Enumerators.MatchType.All,
+                Name = $"{DomainName}.{ZoneName}"
+            };
+
+            var rr = s.client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter).Result;
+            foreach (var item in rr.Result)
+            {
+                var cfresult = s.client.Zones.DnsRecords.DeleteAsync(ZoneId, item.Id);
+            }
+
+            return true;
+        }
     }
 }
