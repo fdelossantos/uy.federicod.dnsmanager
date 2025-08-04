@@ -3,6 +3,7 @@ using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Enumerators;
 using System.Collections;
 using System.Data.SqlClient;
+using System.Text.Json;
 using uy.federicod.dnsmanager.logic.Models;
 
 namespace uy.federicod.dnsmanager.logic
@@ -12,10 +13,13 @@ namespace uy.federicod.dnsmanager.logic
         public string DBConnString { get; set; }
         public CloudFlareClient client { get; set; }
 
+        public string apikey { get; set; }
+
         public Service(string username, string apiKey, string dbconnstring)
         {
             client = new CloudFlareClient(apiKey);
             DBConnString = dbconnstring;
+            apikey = apiKey;
         }
 
         public AccountModel GetAccountOrCreate(string AccountId, string DisplayName)
@@ -69,7 +73,7 @@ namespace uy.federicod.dnsmanager.logic
 
         public async Task<IDictionary<string, string>> GetAvailableZonesAsync() {
             Dictionary<string, string> zones = [];
-            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones";
+            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones WHERE Enabled = 1";
 
             try
             {
@@ -97,7 +101,7 @@ namespace uy.federicod.dnsmanager.logic
         public async Task<IDictionary<string, string>> GetAvailableZonesByIdAsync()
         {
             Dictionary<string, string> zones = [];
-            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones";
+            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones WHERE Enabled = 1";
 
             try
             {
@@ -126,23 +130,35 @@ namespace uy.federicod.dnsmanager.logic
         {
             SearchModel searchModel = new();
             searchModel.Domain = Subdomain;
-
             CancellationToken ct = default;
 
             var zone = await client.Zones.GetDetailsAsync(ZoneId, ct);
             searchModel.ZoneName = zone.Result.Name;
             searchModel.ZoneId = ZoneId;
 
+            // Verificar el total de registros DNS con llamada directa a la API
+            var totalRecords = await GetTotalRecordsCountAsync(ZoneId);
+
+            // Si ya hay 200 o más registros, marcar como no disponible
+            if (totalRecords >= 200)
+            {
+                searchModel.Available = false;
+                searchModel.Message = $"La zona ha alcanzado el límite máximo de registros DNS ({totalRecords}/200).";
+                return searchModel;
+            }
+
             // Buscar si está alojado
-            var dnsRecordFilter = new DnsRecordFilter { 
-                Match = CloudFlare.Client.Enumerators.MatchType.All, 
-                Name = $"{Subdomain}.{zone.Result.Name}", 
-                Type = DnsRecordType.A 
+            var dnsRecordFilter = new DnsRecordFilter
+            {
+                Match = CloudFlare.Client.Enumerators.MatchType.All,
+                Name = $"{Subdomain}.{zone.Result.Name}",
+                Type = DnsRecordType.A
             };
             var record = await client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter);
             if (record.Result.Count > 0)
             {
                 searchModel.Available = false;
+                searchModel.Message = "El subdominio ya existe como registro tipo A.";
                 return searchModel;
             }
 
@@ -157,11 +173,43 @@ namespace uy.federicod.dnsmanager.logic
             if (record.Result.Count > 0)
             {
                 searchModel.Available = false;
+                searchModel.Message = "El subdominio ya existe como registro tipo NS.";
                 return searchModel;
             }
 
             searchModel.Available = true;
+            searchModel.Message = $"Subdominio disponible para crear. Registros actuales: {totalRecords}/200.";
             return searchModel;
+        }
+
+        private async Task<int> GetTotalRecordsCountAsync(string zoneId)
+        {
+            try
+            {
+                using var httpClient = new HttpClient();
+
+                httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {apikey}");
+
+                // Llamada para obtener solo el conteo (per_page=1 para eficiencia)
+                var url = $"https://api.cloudflare.com/client/v4/zones/{zoneId}/dns_records?per_page=1";
+                var response = await httpClient.GetStringAsync(url);
+
+                // Parse JSON para obtener el conteo total
+                using var jsonDoc = JsonDocument.Parse(response);
+                if (jsonDoc.RootElement.TryGetProperty("result_info", out var resultInfo) &&
+                    resultInfo.TryGetProperty("total_count", out var totalCount))
+                {
+                    return totalCount.GetInt32();
+                }
+
+                // Si no encontramos el conteo, usar fallback conservador
+                return 190;
+            }
+            catch (Exception ex)
+            {
+                // Fallback conservador - asumimos que está cerca del límite para ser seguros
+                return 190;
+            }
         }
     }
 }

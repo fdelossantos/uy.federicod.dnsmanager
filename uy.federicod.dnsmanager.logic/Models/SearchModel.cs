@@ -12,5 +12,7 @@ namespace uy.federicod.dnsmanager.logic.Models
         public bool Available { get; set; }
         public string ZoneName { get; set; }
         public string ZoneId { get; set; }
+        public string Message { get; set; }
+
     }
 }

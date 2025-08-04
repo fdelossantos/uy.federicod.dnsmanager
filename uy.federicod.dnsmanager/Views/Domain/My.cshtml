@@ -2,6 +2,7 @@
 @model List<DomainModel>
 @{
     ViewData["Title"] = "My Domains";
+
 }
 <div class="pagetitle">
     <h1>@ViewData["Title"]</h1>
@@ -30,8 +31,11 @@
                             {
                                 foreach (DomainModel domain in Model)
                                 {
+                                    string url = "http://" + domain.DomainName + "." + domain.ZoneName;
                                     <tr>
-                                        <td>@domain.DomainName</td>
+                                        <td>
+                                            <a href="@url" target="_blank">@domain.DomainName</a>
+                                        </td>
                                         <td>@domain.ZoneName</td>
                                         <td>@domain.DelegationType</td>
                                         <td><a class="btn btn-primary" asp-action="Edit" asp-controller="Domain" asp-route-id="@domain.DomainName" asp-route-zonename="@domain.ZoneName">Edit</a></td>
