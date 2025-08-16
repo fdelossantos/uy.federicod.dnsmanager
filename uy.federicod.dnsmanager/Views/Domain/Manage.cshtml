@@ -5,46 +5,148 @@
 }
 <div class="pagetitle">
     <h1>@ViewData["Title"]</h1>
-</div><!-- End Page Title -->
+</div>
 
 <section class="section">
     <div class="row">
         <div class="col-lg-6">
-
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">@(Model.DomainName).@Model.ZoneName</h5>
-                    @if(Model.DelegationType == "Hosted")
-                    {
-                        
-                    }
+@if (Model.DelegationType == "Hosted")
+{
+    <div class="row mb-3">
+        <div class="col-12">
+            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addRecordPanel" aria-expanded="false" aria-controls="addRecordPanel">
+                Add record
+            </button>
+        </div>
+    </div>
 
+    <div class="collapse" id="addRecordPanel">
+        <div class="card card-body">
+            <form asp-controller="Domain" asp-action="AddHostedRecord" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="ZoneName" value="@Model.ZoneName" />
+                <input type="hidden" name="DomainName" value="@Model.DomainName" />
+
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">Type</label>
+                    <div class="col-sm-4">
+                        <select class="form-select" name="RecordType">
+                            <option value="A">A</option>
+                            <option value="CNAME">CNAME</option>
+                            <option value="TXT">TXT</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">Name</label>
+                    <div class="col-sm-6">
+                        <input type="text" class="form-control" name="RecordName" placeholder="@($"{Model.DomainName}.{Model.ZoneName} or sub.{Model.DomainName}.{Model.ZoneName}")" />
+                    </div>
+                    <div class="col-sm-4">
+                        <small class="text-muted">Use '@@' for base host.</small>
+                    </div>
+                </div>
+
+                <div class="row mb-3">
+                    <label class="col-sm-2 col-form-label">Content</label>
+                    <div class="col-sm-6">
+                        <input type="text" class="form-control" name="RecordContent" placeholder="IPv4 (A) / Hostname (CNAME) / Text (TXT)" />
+                    </div>
+                </div>
+
+                <div class="row">
+                    <div class="col-sm-12 d-flex gap-2">
+                        <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#addRecordPanel">Cancel</button>
+                        <button class="btn btn-success" type="submit">Add</button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <hr />
+
+    <div class="table-responsive">
+        <table class="table table-sm table-striped align-middle">
+            <thead>
+                <tr>
+                    <th>Type</th>
+                    <th>Name</th>
+                    <th>Content</th>
+                    <th style="width:120px;">Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+@{
+    var records = ViewBag.Records as List<uy.federicod.dnsmanager.logic.Models.DnsRecordModel> ?? new();
+}
+@foreach (var r in records)
+{
+    <tr>
+        <td>@r.Type @(r.IsBaseA ? " (base)" : "")</td>
+        <td>@r.Name</td>
+        <td>@r.Content</td>
+        <td>
+            @if (r.Deletable)
+            {
+                <form asp-controller="Domain" asp-action="DeleteHostedRecord" method="post" class="d-inline">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="ZoneName" value="@Model.ZoneName" />
+                    <input type="hidden" name="DomainName" value="@Model.DomainName" />
+                    <input type="hidden" name="RecordId" value="@r.Id" />
+                    <button class="btn btn-danger btn-sm" type="submit">Delete</button>
+                </form>
+            }
+            else
+            {
+                <button class="btn btn-secondary btn-sm" disabled>Locked</button>
+            }
+        </td>
+    </tr>
+}
+            </tbody>
+        </table>
+    </div>
+}
 
                     @if (Model.DelegationType == "Delegated")
                     {
                         <div class="row mb-3">
-                        <ul class="list-group">
-                            <li class="list-group-item active" aria-current="true">Your domain is Delegated on these Name Servers:</li>
-                            @foreach(var ns in Model.NameServers)
-                            {
-                                    <li class="list-group-item">@ns <a asp-controller="Record" asp-action="Remove" asp-route-ns="@ns" asp-route-domain="@Model.DomainName" asp-route-zone="@Model.ZoneName" class="btn btn-danger">Remove</a> (Not yet implemented)</li>
-                            }
-                        </ul>
+                            <ul class="list-group">
+                                <li class="list-group-item active" aria-current="true">Your domain is Delegated on these Name Servers:</li>
+                                @foreach (var ns in Model.NameServers)
+                                {
+                                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                                        <span>@ns</span>
+                                        <form asp-controller="Domain" asp-action="RemoveNameserver" method="post" class="d-inline">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="ZoneName" value="@Model.ZoneName" />
+                                            <input type="hidden" name="DomainName" value="@Model.DomainName" />
+                                            <input type="hidden" name="Nameserver" value="@ns" />
+                                            <button type="submit" class="btn btn-danger btn-sm">Remove</button>
+                                        </form>
+                                    </li>
+                                }
+                            </ul>
                         </div>
-                        <form asp-action="Add" asp-controller="Record">
+
+                        <form asp-action="AddNameserver" asp-controller="Domain" method="post">
+                            @Html.AntiForgeryToken()
                             <input type="hidden" value="@Model.ZoneName" name="ZoneName" />
                             <input type="hidden" value="@Model.DomainName" name="DomainName" />
-                            
                             <div class="row mb-3">
-                                <label for="inputText" class="col-sm-2 col-form-label">Add new</label>
+                                <label for="nameserver" class="col-sm-2 col-form-label">Add new</label>
                                 <div class="col-sm-8">
-                                    <input type="text" id="nameserver" name="nameserver" class="form-control" />
+                                    <input type="text" id="nameserver" name="Nameserver" class="form-control" placeholder="ns1.provider.tld." />
                                 </div>
                                 <div class="col-sm-2">
-                                    <input type="submit" value="Add" class="btn btn-primary" /> <p>(Not yet implemented)</p>
+                                    <button type="submit" class="btn btn-primary">Add</button>
                                 </div>
                             </div>
-                            
                         </form>
                     }
                 </div>

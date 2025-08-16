@@ -1,8 +1,10 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.Identity.Web;
 using System.Net;
+using System.Threading.Tasks;
 using uy.federicod.dnsmanager.logic;
 using uy.federicod.dnsmanager.logic.Models;
+
 
 namespace uy.federicod.dnsmanager.UI.Controllers
 {
@@ -16,7 +18,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         {
             configuration = config;
             _logger = logger;
-             service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
+            service = new(configuration["Cloudflare:UserName"], configuration["Cloudflare:ApiKey"], configuration.GetConnectionString("default"));
         }
 
         [HttpPost]
@@ -129,11 +131,17 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         [ValidateAntiForgeryToken]
         public async Task<ActionResult> DeleteAsync(string id, string zonename)
         {
-            Domains domains = new Domains(service);
-            var zones = service.GetAvailableZonesAsync().Result;
-            await domains.DeleteUserDomainAsync(id, zones[zonename], zonename, User.Identity.Name);
+            var zones = await service.GetAvailableZonesAsync(); // ZoneName -> ZoneId
+            if (!zones.TryGetValue(zonename, out var zoneId))
+            {
+                TempData["Error"] = "Zone not found.";
+                return RedirectToAction("My");
+            }
 
-            ViewBag.message = "The domain has been deleted";
+            var domains = new Domains(service);
+            var ok = await domains.DeleteUserDomainAsync(id, zoneId, zonename, User?.Identity?.Name);
+
+            TempData[ok ? "Success" : "Error"] = ok ? "The domain has been deleted" : "Delete failed.";
             return RedirectToAction("My");
         }
 
@@ -141,12 +149,103 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         {
             Domains domains = new Domains(service);
             var zones = await service.GetAvailableZonesAsync();
-            DomainModel domainModel = await domains.GetUserDomainAsync(id, zones[zonename], User.Identity.Name);
+            var zoneId = zones[zonename];
+
+            DomainModel domainModel = await domains.GetUserDomainAsync(id, zoneId, User.Identity.Name);
             domainModel.ZoneName = zonename;
 
-            ViewBag.Records = await domains.GetRecordsAsync(id, zones[zonename]);
+            //ViewBag.Records = await domains.GetRecordsAsync(id, zones[zonename]);
+            ViewBag.Records = await domains.GetHostedRecordsAsync(id, zoneId, domainModel.AccountId);
 
             return View(domainModel);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddNameserver(NameserverChangeModel input)
+        {
+            if (string.IsNullOrWhiteSpace(input?.ZoneName) ||
+                string.IsNullOrWhiteSpace(input?.DomainName) ||
+                string.IsNullOrWhiteSpace(input?.Nameserver))
+            {
+                TempData["Error"] = "Nameserver is required.";
+                return RedirectToAction("Manage", new { id = input?.DomainName, zonename = input?.ZoneName });
+            }
+
+            var zonesByName = await service.GetAvailableZonesAsync(); // ZoneName -> ZoneId
+            if (!zonesByName.TryGetValue(input.ZoneName, out var zoneId))
+            {
+                TempData["Error"] = "Zone not found.";
+                return RedirectToAction("Manage", new { id = input.DomainName, zonename = input.ZoneName });
+            }
+
+            var domains = new Domains(service);
+            var (ok, msg) = await domains.AddNameserverAsync(input.DomainName, zoneId, input.Nameserver, User?.Identity?.Name);
+            TempData[ok ? "Success" : "Error"] = msg;
+
+            return RedirectToAction("Manage", new { id = input.DomainName, zonename = input.ZoneName });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> RemoveNameserver(NameserverChangeModel input)
+        {
+            if (string.IsNullOrWhiteSpace(input?.ZoneName) ||
+                string.IsNullOrWhiteSpace(input?.DomainName) ||
+                string.IsNullOrWhiteSpace(input?.Nameserver))
+            {
+                TempData["Error"] = "Nameserver is required.";
+                return RedirectToAction("Manage", new { id = input?.DomainName, zonename = input?.ZoneName });
+            }
+
+            var zonesByName = await service.GetAvailableZonesAsync(); // ZoneName -> ZoneId
+            if (!zonesByName.TryGetValue(input.ZoneName, out var zoneId))
+            {
+                TempData["Error"] = "Zone not found.";
+                return RedirectToAction("Manage", new { id = input.DomainName, zonename = input.ZoneName });
+            }
+
+            var domains = new Domains(service);
+            var (ok, msg) = await domains.RemoveNameserverAsync(input.DomainName, zoneId, input.Nameserver);
+            TempData[ok ? "Success" : "Error"] = msg;
+
+            return RedirectToAction("Manage", new { id = input.DomainName, zonename = input.ZoneName });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> AddHostedRecord(string ZoneName, string DomainName, string RecordType, string RecordName, string RecordContent)
+        {
+            var zonesByName = await service.GetAvailableZonesAsync();
+            if (!zonesByName.TryGetValue(ZoneName, out var zoneId))
+            {
+                TempData["Error"] = "Zone not found.";
+                return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
+            }
+
+            var domains = new Domains(service);
+            var (ok, msg) = await domains.CreateHostedRecordAsync(zoneId, DomainName, RecordType, RecordName, RecordContent, User?.Identity?.Name);
+            TempData[ok ? "Success" : "Error"] = msg;
+
+            return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteHostedRecord(string ZoneName, string DomainName, string RecordId)
+        {
+            var zonesByName = await service.GetAvailableZonesAsync();
+            if (!zonesByName.TryGetValue(ZoneName, out var zoneId))
+            {
+                TempData["Error"] = "Zone not found.";
+                return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
+            }
+
+            var domains = new Domains(service);
+            var (ok, msg) = await domains.DeleteHostedRecordAsync(zoneId, DomainName, RecordId);
+            TempData[ok ? "Success" : "Error"] = msg;
+
+            return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
         }
     }
 }
