@@ -18,7 +18,8 @@
                     {
                         <p style="color: red">@ViewBag.Message</p>
                     }
-                    <form asp-action="Register" asp-controller="Domain">
+                    
+                    <form asp-action="Register" asp-controller="Domain" id="registerForm">
                         <div class="row mb-3">
                             <label for="DelegationType" class="col-sm-3 col-form-label">Delegation type</label>
                             <div class="col-sm-9">
@@ -29,27 +30,125 @@
                             </div>
                         </div>
                         
-                        <div class="row mb-3">
+                        <div id="hostedRow" class="row mb-3">
                             <p>If you selected Hosted, you have to provide an IP Address.</p>
                             <label for="IPAddress" class="col-sm-3 col-form-label">IP Address</label>
                             <div class="col-sm-9">
                                 <input type="text" class="form-control" name="IPAddress" id="IPAddress" />
                             </div>
                         </div>
-                        <p>&nbsp;</p>
-                        <div class="row mb-3">
+
+                        <div id="delegatedRow" class="row mb-3">
                             <p>If you selected Delegated, you have to provide the FQDN of at least one Name Server.</p>
                             <label for="nameservers" class="col-sm-3 col-form-label">Name Servers</label>
                             <div class="col-sm-9">
                                 <textarea class="form-control" id="nameservers" name="nameservers" style="height: 100px"></textarea>
                             </div>
                         </div>
-                        
+
+                        <div id="validationErrors" style="color: red; margin-bottom: 1rem;"></div>
+
                         <input type="hidden" name="domainname" id="domainname" value="@Model.Domain" />
                         <input type="hidden" name="zonename" id="zonename" value="@Model.ZoneName" />
                         <p>&nbsp;</p>
                         <input class="btn btn-primary" type="submit" value="Accept" name="Accept" id="Accept" />
                     </form>
+
+                    <script>
+                        (function() {
+                            const select = document.getElementById('DelegationType');
+                            const hostedRow = document.getElementById('hostedRow');
+                            const delegatedRow = document.getElementById('delegatedRow');
+                            const ipInput = document.getElementById('IPAddress');
+                            const nsInput = document.getElementById('nameservers');
+                            const form = document.getElementById('registerForm');
+                            const errorDiv = document.getElementById('validationErrors');
+
+                            const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
+                            const ipv6Regex = /^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(([0-9A-Fa-f]{1,4}:){1,7}:)|(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|([0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6}))|(:((:[0-9A-Fa-f]{1,4}){1,7}|:)))(%.+)?$/;
+                            const fqdnRegex = /^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+(?:[A-Za-z]{2,63})\.?$/;
+
+                            function updateVisibility() {
+                                const val = select ? select.value : null;
+                                if (val === 'Hosted') {
+                                    hostedRow && hostedRow.classList.remove('d-none');
+                                    delegatedRow && delegatedRow.classList.add('d-none');
+                                    if (ipInput) ipInput.required = true;
+                                    if (nsInput) nsInput.required = false;
+                                } else if (val === 'Delegated') {
+                                    hostedRow && hostedRow.classList.add('d-none');
+                                    delegatedRow && delegatedRow.classList.remove('d-none');
+                                    if (ipInput) ipInput.required = false;
+                                    if (nsInput) nsInput.required = true;
+                                }
+                            }
+
+                            function isValidIP(value) {
+                                if (!value) return false;
+                                value = value.trim();
+                                return ipv4Regex.test(value) || ipv6Regex.test(value);
+                            }
+
+                            function isValidFQDN(name) {
+                                return fqdnRegex.test(name);
+                            }
+
+                            function validateForm(ev) {
+                                const errors = [];
+                                const type = select ? select.value : null;
+
+                                if (type === 'Hosted') {
+                                    const ip = ipInput ? ipInput.value.trim() : '';
+                                    if (!ip) {
+                                        errors.push('IP Address is required for Hosted delegation.');
+                                    } else if (!isValidIP(ip)) {
+                                        errors.push('Invalid IP Address. Provide a valid IPv4 or IPv6 address.');
+                                    }
+                                } else if (type === 'Delegated') {
+                                    const raw = nsInput ? nsInput.value : '';
+                                    const parts = raw.split(/[,;\\s]+/).map(p => p.trim()).filter(Boolean);
+                                    if (parts.length === 0) {
+                                        errors.push('At least one nameserver FQDN is required for Delegated delegation.');
+                                    } else {
+                                        const invalid = parts.filter(p => !isValidFQDN(p));
+                                        if (invalid.length > 0) {
+                                            errors.push('The following nameserver entries are not valid FQDNs: ' + invalid.join(', '));
+                                        }
+                                    }
+                                }
+
+                                if (errors.length > 0) {
+                                    ev.preventDefault();
+                                    errorDiv.innerHTML = errors.map(e => '<div>' + e + '</div>').join('');
+                                    // focus first invalid field
+                                    if (type === 'Hosted' && ipInput) ipInput.focus();
+                                    else if (type === 'Delegated' && nsInput) nsInput.focus();
+                                    return false;
+                                }
+
+                                // no errors
+                                return true;
+                            }
+
+                            if (select) {
+                                select.addEventListener('change', function() { updateVisibility(); if (errorDiv) errorDiv.innerHTML = ''; });
+                                // initialize on load
+                                updateVisibility();
+                            }
+
+                            if (ipInput) {
+                                ipInput.addEventListener('input', function() { if (errorDiv) errorDiv.innerHTML = ''; });
+                            }
+
+                            if (nsInput) {
+                                nsInput.addEventListener('input', function() { if (errorDiv) errorDiv.innerHTML = ''; });
+                            }
+
+                            if (form) {
+                                form.addEventListener('submit', validateForm);
+                            }
+                        })();
+                    </script>
                 </div>
             </div>
         </div>
