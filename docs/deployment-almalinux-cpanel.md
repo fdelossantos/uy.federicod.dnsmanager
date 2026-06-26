@@ -19,11 +19,13 @@ Store production values in `/etc/dnsmanager/dnsmanager.env` with root-only permi
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://127.0.0.1:5088
 Authentication__Provider=Entra
-AzureAd__ClientSecret=...
+# AzureAd__ClientSecret=...
 Cloudflare__ApiKey=...
 Cloudflare__UserName=token
 ConnectionStrings__default=Server=localhost;Database=fdcom_dnsmanager;User ID=fdcom_dnsmanager;Password=...;SslMode=Preferred;TreatTinyAsBoolean=true;
 ```
+
+`AzureAd__ClientSecret` is only required if the app registration is changed to a confidential client/auth-code flow. The deployed configuration currently challenges Entra with `response_type=id_token` for tenant `fi365.ort.edu.uy`.
 
 For temporary test auth only:
 
