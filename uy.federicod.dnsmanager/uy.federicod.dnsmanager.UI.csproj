@@ -19,4 +19,8 @@
     <ProjectReference Include="..\uy.federicod.dnsmanager.logic\uy.federicod.dnsmanager.logic.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <Content Update="appsettings.Development.json" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
 </Project>

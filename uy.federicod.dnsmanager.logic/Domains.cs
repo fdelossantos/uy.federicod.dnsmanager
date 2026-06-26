@@ -1,4 +1,4 @@
-﻿using CloudFlare.Client.Api.Zones;
+using CloudFlare.Client.Api.Zones;
 using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Client.Zones;
 using CloudFlare.Client.Enumerators;
@@ -6,7 +6,7 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Data;
-using System.Data.SqlClient;
+using MySqlConnector;
 using System.Linq;
 using System.Net;
 using System.Net.Http;
@@ -32,13 +32,13 @@ namespace uy.federicod.dnsmanager.logic
             List<DomainModel> results = [];
             string query = "SELECT * FROM Domains WHERE AccountId = @AccountId";
 
-            SqlConnection connection = new(s.DBConnString);
+            MySqlConnection connection = new(s.DBConnString);
             connection.Open();
 
-            SqlCommand command = new(query, connection);
+            MySqlCommand command = new(query, connection);
             command.Parameters.AddWithValue("AccountId", AccountId);
 
-            SqlDataReader reader = command.ExecuteReader();
+            MySqlDataReader reader = command.ExecuteReader();
             while(reader.Read())
             {
                 results.Add(new DomainModel()
@@ -61,15 +61,15 @@ namespace uy.federicod.dnsmanager.logic
             DomainModel result = new();
             string query = "SELECT * FROM Domains WHERE AccountId = @AccountId AND ZoneId = @ZoneId AND DomainName = @DomainName";
 
-            SqlConnection connection = new(s.DBConnString);
+            MySqlConnection connection = new(s.DBConnString);
             connection.Open();
 
-            SqlCommand command = new(query, connection);
+            MySqlCommand command = new(query, connection);
             command.Parameters.AddWithValue("DomainName", DomainName);
             command.Parameters.AddWithValue("ZoneId", ZoneId);
             command.Parameters.AddWithValue("AccountId", AccountId);
 
-            SqlDataReader reader = command.ExecuteReader();
+            MySqlDataReader reader = command.ExecuteReader();
             int count = 0;
             while (reader.Read())
             {
@@ -149,11 +149,11 @@ namespace uy.federicod.dnsmanager.logic
         {
             try
             {
-                string query = "INSERT INTO dbo.Domains (DomainName, ZoneId, AccountId, DelegationType) VALUES (@DomainName, @ZoneId, @AccountId, @DelegationType)";
-                SqlConnection connection = new(s.DBConnString);
+                string query = "INSERT INTO Domains (DomainName, ZoneId, AccountId, DelegationType) VALUES (@DomainName, @ZoneId, @AccountId, @DelegationType)";
+                MySqlConnection connection = new(s.DBConnString);
                 connection.Open();
 
-                SqlCommand command = new(query, connection);
+                MySqlCommand command = new(query, connection);
                 command.Parameters.AddWithValue("DomainName", domainModel.DomainName);
                 command.Parameters.AddWithValue("ZoneId", domainModel.ZoneId);
                 command.Parameters.AddWithValue("AccountId", accountModel.AccountId);
@@ -585,7 +585,7 @@ namespace uy.federicod.dnsmanager.logic
             if (!cf.Success)
                 return (false, cf.Errors?.FirstOrDefault()?.Message ?? "Cloudflare add failed.");
 
-            // (Opcional) persistir best-effort en dbo.Records
+            // (Opcional) persistir best-effort en Records
             await TryUpsertRecordAsync(domainName, zoneId, accountId, cf.Result);
 
             return (true, $"{type.ToUpperInvariant()} record created.");
@@ -635,16 +635,14 @@ namespace uy.federicod.dnsmanager.logic
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
 
                 var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-IF NOT EXISTS (SELECT 1 FROM dbo.DomainNameservers WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND Nameserver=@Nameserver)
-BEGIN
-    INSERT INTO dbo.DomainNameservers (DomainName, ZoneId, Nameserver, CreatedBy)
-    VALUES (@DomainName, @ZoneId, @Nameserver, @CreatedBy);
-END";
+INSERT INTO DomainNameservers (DomainName, ZoneId, Nameserver, CreatedBy)
+VALUES (@DomainName, @ZoneId, @Nameserver, @CreatedBy)
+ON DUPLICATE KEY UPDATE CreatedBy = VALUES(CreatedBy);";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
                 cmd.Parameters.AddWithValue("@Nameserver", nameserver + ".");
@@ -662,12 +660,12 @@ END";
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
 
                 var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-DELETE FROM dbo.DomainNameservers
+DELETE FROM DomainNameservers
 WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND Nameserver=@Nameserver;";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
@@ -689,7 +687,7 @@ WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND Nameserver=@Nameserver;";
                 "CNAME" => DnsRecordType.Cname,
                 "TXT" => DnsRecordType.Txt,
                 "MX" => DnsRecordType.Mx,
-                _ => throw new ArgumentException("Unsupported type. Only A, CNAME, TXT are allowed.")
+                _ => throw new ArgumentException("Unsupported type. Only A, CNAME, TXT, MX are allowed.")
             };
         }
 
@@ -721,30 +719,32 @@ WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND Nameserver=@Nameserver;";
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
 
                 using var cmd = conn.CreateCommand();
                 cmd.CommandText = @"
-IF EXISTS (SELECT 1 FROM dbo.Records WHERE DomainName=@DomainName AND ZoneId=@ZoneId)
-BEGIN
-    UPDATE dbo.Records SET
-        AccountId=@AccountId, RecordContent=@Content, Name=@Name,
-        Type=@Type, Comment=@Comment, Id=@Id, TTL=@Ttl, Proxied=@Proxied, Proxiable=@Proxiable, ZonaName=@ZoneName
-    WHERE DomainName=@DomainName AND ZoneId=@ZoneId;
-END
-ELSE
-BEGIN
-    INSERT INTO dbo.Records (DomainName, ZoneId, AccountId, RecordContent, Name, Proxied, Type, Comment, CreatedOn, Id, Lockef, ModifiedOn, Proxiable, TTL, ZonaName)
-    VALUES (@DomainName, @ZoneId, @AccountId, @Content, @Name, @Proxied, @Type, @Comment, @CreatedOn, @Id, NULL, @ModifiedOn, @Proxiable, @Ttl, @ZoneName);
-END";
+INSERT INTO Records (DomainName, ZoneId, AccountId, RecordContent, Name, Proxied, Type, Comment, CreatedOn, Id, Lockef, ModifiedOn, Proxiable, TTL, ZonaName)
+VALUES (@DomainName, @ZoneId, @AccountId, @Content, @Name, @Proxied, @Type, @Comment, @CreatedOn, @Id, NULL, @ModifiedOn, @Proxiable, @Ttl, @ZoneName)
+ON DUPLICATE KEY UPDATE
+    AccountId = VALUES(AccountId),
+    RecordContent = VALUES(RecordContent),
+    Name = VALUES(Name),
+    Proxied = VALUES(Proxied),
+    Type = VALUES(Type),
+    Comment = VALUES(Comment),
+    ModifiedOn = VALUES(ModifiedOn),
+    Id = VALUES(Id),
+    Proxiable = VALUES(Proxiable),
+    TTL = VALUES(TTL),
+    ZonaName = VALUES(ZonaName);";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
                 cmd.Parameters.AddWithValue("@AccountId", accountId ?? "");
                 cmd.Parameters.AddWithValue("@Content", (r.Content ?? "").ToString());
                 cmd.Parameters.AddWithValue("@Name", r.Name ?? "");
                 cmd.Parameters.AddWithValue("@Type", r.Type.ToString());
-                //cmd.Parameters.AddWithValue("@Comment", r.Comment ?? "");
+                cmd.Parameters.AddWithValue("@Comment", r.Comment ?? "");
                 cmd.Parameters.AddWithValue("@Id", r.Id ?? "");
                 cmd.Parameters.AddWithValue("@Ttl", r.Ttl);
                 cmd.Parameters.AddWithValue("@Proxied", (bool)r.Proxied ? "true" : "false");
@@ -764,11 +764,11 @@ END";
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
 
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"UPDATE dbo.Records SET RecordContent=NULL, Name=NULL, Type=NULL, Comment=NULL, Id=NULL WHERE DomainName=@DomainName AND ZoneId=@ZoneId";
+                cmd.CommandText = @"UPDATE Records SET RecordContent=NULL, Name=NULL, Type=NULL, Comment=NULL, Id=NULL WHERE DomainName=@DomainName AND ZoneId=@ZoneId";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
                 await cmd.ExecuteNonQueryAsync();
@@ -783,10 +783,10 @@ END";
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"DELETE FROM dbo.Domains WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND AccountId=@AccountId";
+                cmd.CommandText = @"DELETE FROM Domains WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND AccountId=@AccountId";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
                 cmd.Parameters.AddWithValue("@AccountId", accountId ?? "");
@@ -803,10 +803,10 @@ END";
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"DELETE FROM dbo.DomainNameservers WHERE DomainName=@DomainName AND ZoneId=@ZoneId";
+                cmd.CommandText = @"DELETE FROM DomainNameservers WHERE DomainName=@DomainName AND ZoneId=@ZoneId";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
                 await cmd.ExecuteNonQueryAsync();
@@ -818,10 +818,10 @@ END";
         {
             try
             {
-                using var conn = new SqlConnection(s.DBConnString);
+                using var conn = new MySqlConnection(s.DBConnString);
                 await conn.OpenAsync();
                 using var cmd = conn.CreateCommand();
-                cmd.CommandText = @"DELETE FROM dbo.Records WHERE DomainName=@DomainName AND ZoneId=@ZoneId";
+                cmd.CommandText = @"DELETE FROM Records WHERE DomainName=@DomainName AND ZoneId=@ZoneId";
                 cmd.Parameters.AddWithValue("@DomainName", domainName);
                 cmd.Parameters.AddWithValue("@ZoneId", zoneId);
                 await cmd.ExecuteNonQueryAsync();

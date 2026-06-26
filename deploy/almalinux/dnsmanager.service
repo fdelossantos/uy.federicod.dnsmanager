@@ -1,0 +1,19 @@
+[Unit]
+Description=DNS Manager ASP.NET Core application
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+WorkingDirectory=/home/fdcom/apps/dnsmanager/current
+ExecStart=/home/fdcom/apps/dnsmanager/current/uy.federicod.dnsmanager.UI
+Restart=always
+RestartSec=10
+KillSignal=SIGINT
+SyslogIdentifier=dnsmanager
+User=fdcom
+EnvironmentFile=/etc/dnsmanager/dnsmanager.env
+Environment=ASPNETCORE_URLS=http://127.0.0.1:5088
+Environment=ASPNETCORE_ENVIRONMENT=Production
+
+[Install]
+WantedBy=multi-user.target

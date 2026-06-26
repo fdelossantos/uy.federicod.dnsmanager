@@ -1,8 +1,8 @@
-﻿using CloudFlare.Client;
+using CloudFlare.Client;
 using CloudFlare.Client.Api.Zones.DnsRecord;
 using CloudFlare.Client.Enumerators;
 using System.Collections;
-using System.Data.SqlClient;
+using MySqlConnector;
 using System.Text.Json;
 using uy.federicod.dnsmanager.logic.Models;
 
@@ -26,14 +26,14 @@ namespace uy.federicod.dnsmanager.logic
         {
             AccountModel account = new AccountModel();
 
-            string query = "SELECT * FROM dbo.Accounts WHERE AccountId = @AccountId";
+            string query = "SELECT * FROM Accounts WHERE AccountId = @AccountId";
 
-            SqlConnection connection = new(DBConnString);
+            MySqlConnection connection = new(DBConnString);
             connection.Open();
 
-            SqlCommand command = new(query, connection);
+            MySqlCommand command = new(query, connection);
             command.Parameters.AddWithValue("AccountId", AccountId);
-            SqlDataReader reader = command.ExecuteReader();
+            MySqlDataReader reader = command.ExecuteReader();
 
             while (reader.Read())
             {
@@ -48,8 +48,8 @@ namespace uy.federicod.dnsmanager.logic
                 try
                 {
                     DateTime created = DateTime.Now;
-                    query = "INSERT INTO dbo.Accounts (AccountId, DisplayName, Created) VALUES (@AccountId, @DisplayName, @Created)";
-                    SqlCommand commandc = new(query, connection);
+                    query = "INSERT INTO Accounts (AccountId, DisplayName, Created) VALUES (@AccountId, @DisplayName, @Created)";
+                    MySqlCommand commandc = new(query, connection);
                     commandc.Parameters.AddWithValue("AccountId", AccountId);
                     commandc.Parameters.AddWithValue("DisplayName", DisplayName);
                     commandc.Parameters.AddWithValue("Created", created);
@@ -73,15 +73,15 @@ namespace uy.federicod.dnsmanager.logic
 
         public async Task<IDictionary<string, string>> GetAvailableZonesAsync() {
             Dictionary<string, string> zones = [];
-            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones WHERE Enabled = 1";
+            string query = "SELECT ZoneId, ZoneName FROM Zones WHERE Enabled = 1";
 
             try
             {
-                using SqlConnection connection = new(DBConnString);
+                using MySqlConnection connection = new(DBConnString);
                 connection.Open();
 
-                using SqlCommand command = new(query, connection);
-                using SqlDataReader reader = await command.ExecuteReaderAsync();
+                using MySqlCommand command = new(query, connection);
+                using MySqlDataReader reader = await command.ExecuteReaderAsync();
                 while (reader.Read())
                 {
                     string zoneName = reader["ZoneName"].ToString();
@@ -101,15 +101,15 @@ namespace uy.federicod.dnsmanager.logic
         public async Task<IDictionary<string, string>> GetAvailableZonesByIdAsync()
         {
             Dictionary<string, string> zones = [];
-            string query = "SELECT ZoneId, ZoneName FROM dbo.Zones WHERE Enabled = 1";
+            string query = "SELECT ZoneId, ZoneName FROM Zones WHERE Enabled = 1";
 
             try
             {
-                using SqlConnection connection = new(DBConnString);
+                using MySqlConnection connection = new(DBConnString);
                 connection.Open();
 
-                using SqlCommand command = new(query, connection);
-                using SqlDataReader reader = await command.ExecuteReaderAsync();
+                using MySqlCommand command = new(query, connection);
+                using MySqlDataReader reader = await command.ExecuteReaderAsync();
                 while (reader.Read())
                 {
                     string zoneName = reader["ZoneName"].ToString();
