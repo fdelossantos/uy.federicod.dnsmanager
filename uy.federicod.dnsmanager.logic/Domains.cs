@@ -522,9 +522,9 @@ namespace uy.federicod.dnsmanager.logic
                 .ToList();
         }
 
-        // Crear registro Hosted (A, CNAME, TXT)
+        // Crear registro Hosted (A, CNAME, TXT, MX)
         public async Task<(bool Ok, string Msg)> CreateHostedRecordAsync(
-            string zoneId, string domainName, string type, string inputName, string content, string accountId)
+            string zoneId, string domainName, string type, string inputName, string content, string accountId, string recordPriority = null)
         {
             if (string.IsNullOrWhiteSpace(zoneId)) return (false, "ZoneId is required.");
             if (string.IsNullOrWhiteSpace(domainName)) return (false, "DomainName is required.");
@@ -552,6 +552,20 @@ namespace uy.federicod.dnsmanager.logic
                     return (false, "Cannot create CNAME on base host because an A base record exists.");
             }
 
+            int priorityValue = 0;
+            if (cfType == DnsRecordType.Mx)
+            {
+                // Parse and validate priority
+                if (!int.TryParse(recordPriority, out priorityValue) || priorityValue < 0)
+                {
+                    priorityValue = 10; // default priority
+                }
+
+                // Normalize MX content (mail exchanger host)
+                content = NormalizeHost(content);
+                if (string.IsNullOrWhiteSpace(content)) return (false, "Content must be a valid hostname for MX.");
+            }
+
             var newRec = new NewDnsRecord
             {
                 Name = fqdn,               // FQDN
@@ -561,6 +575,11 @@ namespace uy.federicod.dnsmanager.logic
                 Ttl = 1,                   // Auto
                 Comment = accountId
             };
+
+            if (cfType == DnsRecordType.Mx)
+            {
+                newRec.Priority = priorityValue;
+            }
 
             var cf = await s.client.Zones.DnsRecords.AddAsync(zoneId, newRec);
             if (!cf.Success)
@@ -669,6 +688,7 @@ WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND Nameserver=@Nameserver;";
                 "A" => DnsRecordType.A,
                 "CNAME" => DnsRecordType.Cname,
                 "TXT" => DnsRecordType.Txt,
+                "MX" => DnsRecordType.Mx,
                 _ => throw new ArgumentException("Unsupported type. Only A, CNAME, TXT are allowed.")
             };
         }

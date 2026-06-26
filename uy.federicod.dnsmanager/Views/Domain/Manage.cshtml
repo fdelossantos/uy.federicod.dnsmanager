@@ -33,10 +33,11 @@
                 <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">Type</label>
                     <div class="col-sm-4">
-                        <select class="form-select" name="RecordType">
+                        <select class="form-select" name="RecordType" id="recordTypeSelect" onchange="onTypeChange()">
                             <option value="A">A</option>
                             <option value="CNAME">CNAME</option>
                             <option value="TXT">TXT</option>
+                            <option value="MX">MX</option>
                         </select>
                     </div>
                 </div>
@@ -54,7 +55,17 @@
                 <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">Content</label>
                     <div class="col-sm-6">
-                        <input type="text" class="form-control" name="RecordContent" placeholder="IPv4 (A) / Hostname (CNAME) / Text (TXT)" />
+                        <input type="text" class="form-control" name="RecordContent" placeholder="IPv4 (A) / Hostname (CNAME) / Text (TXT) / Hostname (MX)" />
+                    </div>
+                </div>
+
+                <div class="row mb-3" id="priorityRow" style="display:none;">
+                    <label class="col-sm-2 col-form-label">Priority</label>
+                    <div class="col-sm-4">
+                        <input type="number" class="form-control" name="RecordPriority" min="0" value="10" />
+                    </div>
+                    <div class="col-sm-6">
+                        <small class="text-muted">Priority for MX records, lower is higher priority.</small>
                     </div>
                 </div>
 
@@ -154,3 +165,18 @@
         </div>
     </div>
 </section>
+
+<script>
+    function onTypeChange() {
+        var t = document.getElementById('recordTypeSelect').value;
+        var pr = document.getElementById('priorityRow');
+        if (t === 'MX') {
+            pr.style.display = '';
+        } else {
+            pr.style.display = 'none';
+        }
+    }
+
+    // Initialize on load
+    document.addEventListener('DOMContentLoaded', function(){ onTypeChange(); });
+</script>

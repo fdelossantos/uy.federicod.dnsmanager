@@ -37,7 +37,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             };
             IPAddress iPAddress = new(0);
             string DelegationType = collection["DelegationType"];
-            string zonaname = collection["zonename"];
+            string zonename = collection["zonename"];
             var zones = service.GetAvailableZonesAsync().Result;
 
             if (collection["Accept"] == "Accept")
@@ -61,8 +61,8 @@ namespace uy.federicod.dnsmanager.UI.Controllers
                         {
                             Domain = domainname,
                             Available = true,
-                            ZoneId = zones[zonaname],
-                            ZoneName = zonaname
+                            ZoneId = zones[zonename],
+                            ZoneName = zonename
                         };
 
                         return View(searchModel);
@@ -80,10 +80,10 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
                 Dictionary<string, string> resultados = [];
                 if (DelegationType == "Hosted")
-                    resultados = domains.CreateAsync(domainname, zones[zonaname], 
+                    resultados = domains.CreateAsync(domainname, zones[zonename], 
                         DelegationType, account, service, HostIP: iPAddress);
                 else
-                    resultados = domains.CreateAsync(domainname, zones[zonaname],
+                    resultados = domains.CreateAsync(domainname, zones[zonename],
                         DelegationType, account, service, NameServers: ns);
             }
 
@@ -214,7 +214,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> AddHostedRecord(string ZoneName, string DomainName, string RecordType, string RecordName, string RecordContent)
+        public async Task<IActionResult> AddHostedRecord(string ZoneName, string DomainName, string RecordType, string RecordName, string RecordContent, string RecordPriority)
         {
             var zonesByName = await service.GetAvailableZonesAsync();
             if (!zonesByName.TryGetValue(ZoneName, out var zoneId))
@@ -224,7 +224,7 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             }
 
             var domains = new Domains(service);
-            var (ok, msg) = await domains.CreateHostedRecordAsync(zoneId, DomainName, RecordType, RecordName, RecordContent, User?.Identity?.Name);
+            var (ok, msg) = await domains.CreateHostedRecordAsync(zoneId, DomainName, RecordType, RecordName, RecordContent, User?.Identity?.Name, RecordPriority);
             TempData[ok ? "Success" : "Error"] = msg;
 
             return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });

@@ -106,7 +106,7 @@
                                     }
                                 } else if (type === 'Delegated') {
                                     const raw = nsInput ? nsInput.value : '';
-                                    const parts = raw.split(/[,;\\s]+/).map(p => p.trim()).filter(Boolean);
+                                    const parts = raw.split(/[,;\s]+/).map(p => p.trim()).filter(Boolean);
                                     if (parts.length === 0) {
                                         errors.push('At least one nameserver FQDN is required for Delegated delegation.');
                                     } else {
