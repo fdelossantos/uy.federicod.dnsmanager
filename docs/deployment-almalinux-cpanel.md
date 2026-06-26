@@ -7,7 +7,9 @@ Production URL: `https://dnsmanager.federicod.com`
 - Publish as framework-dependent `linux-x64` from `uy.federicod.dnsmanager/uy.federicod.dnsmanager.UI.csproj`; the server has ASP.NET Core Runtime 8 installed from AlmaLinux AppStream.
 - Run under `systemd` as user `fdcom`. The original self-contained target is also valid, but production uses framework-dependent deployment to avoid large SCP transfers.
 - Serve Kestrel on `127.0.0.1:5088` behind Apache reverse proxy.
+- Redirect HTTP to HTTPS in the cPanel non-SSL vhost include, with an exception for `/.well-known/acme-challenge/` and `/.well-known/pki-validation/` so AutoSSL DCV can renew certificates.
 - Set `Cache-Control: no-store` on the Apache include because cPanel nginx proxy caching can otherwise serve authenticated HTML after switching auth modes.
+- Keep `dnsmanager.federicod.com` included in AutoSSL. If the certificate becomes self-signed, check `SSL get_autossl_excluded_domains` and remove `dnsmanager.federicod.com` from the excluded list before running `/usr/local/cpanel/bin/autossl_check --user fdcom`.
 - Keep `Authentication__Provider=Entra` in production. Use `Test` only during controlled smoke tests.
 - `appsettings.Development.json` is intentionally ignored by git and excluded from publish output; do not copy it to production.
 
@@ -56,3 +58,7 @@ curl -i https://federicod.com/
 ```
 
 Protected routes must redirect to the Universidad ORT Entra tenant when `Authentication__Provider=Entra`.
+
+## Federicod.net
+
+`dnsmanager.federicod.net` cannot be issued by AutoSSL until `federicod.net` exists in DNS and belongs to the `fdcom` cPanel account. Current checks showed `federicod.net` and `dnsmanager.federicod.net` as NXDOMAIN, and cPanel rejected the domain because it could not determine nameservers.
