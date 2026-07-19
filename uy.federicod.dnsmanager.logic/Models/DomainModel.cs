@@ -13,6 +13,7 @@ namespace uy.federicod.dnsmanager.logic.Models
         public string ZoneId { get; set; }
         public string? ZoneName { get; set; }
         public string DelegationType { get; set; } // Delegated | Hosted
+        public string? HostedRecordType { get; set; } // A | CNAME for Hosted domains
         public List<string>? NameServers { get; set; }
 
         public DomainModel()

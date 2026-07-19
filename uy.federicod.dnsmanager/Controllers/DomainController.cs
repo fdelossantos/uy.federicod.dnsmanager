@@ -1,7 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.Identity.Web;
-using System.Net;
 using System.Threading.Tasks;
+using uy.federicod.dnsmanager.Models;
 using uy.federicod.dnsmanager.logic;
 using uy.federicod.dnsmanager.logic.Models;
 
@@ -23,71 +22,76 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public IActionResult Register(IFormCollection collection)
+        public async Task<IActionResult> Register(DomainRegistrationViewModel model)
         {
-            // Inicializa objetos
-            
-            Domains domains = new Domains(service);
-
-            // Prepara un AccountModel para buscar o crear el usuario
-            AccountModel account = new AccountModel()
+            string? accountId = User.Identity?.Name;
+            if (string.IsNullOrWhiteSpace(accountId))
             {
-                AccountId = User.Identity.Name,
-                DisplayName = User.Claims.FirstOrDefault(c => c.Type == "name").Value
-            };
-            IPAddress iPAddress = new(0);
-            string DelegationType = collection["DelegationType"];
-            string zonename = collection["zonename"];
-            var zones = service.GetAvailableZonesAsync().Result;
-
-            if (collection["Accept"] == "Accept")
-            {
-                // DomainName
-                string domainname = collection["domainname"];
-                // IPAddress si es Hosted
-                
-                if (DelegationType == "Hosted")
-                {
-                    try
-                    {
-                        iPAddress = IPAddress.Parse(collection["IPAddress"]);
-                    }
-
-                    catch (Exception ex)
-                    {
-                        // Si la IP no es válida, hay que avisarle.
-                        ViewBag.Message = ex.Message;
-                        SearchModel searchModel = new()
-                        {
-                            Domain = domainname,
-                            Available = true,
-                            ZoneId = zones[zonename],
-                            ZoneName = zonename
-                        };
-
-                        return View(searchModel);
-                    }
-                }
-                
-                List<string> ns = [];
-                if(DelegationType == "Delegated")
-                {
-                    foreach (string linea in collection["nameservers"].ToString().Split('\n'))
-                    {
-                        ns.Add(linea);
-                    }
-                }
-
-                Dictionary<string, string> resultados = [];
-                if (DelegationType == "Hosted")
-                    resultados = domains.CreateAsync(domainname, zones[zonename], 
-                        DelegationType, account, service, HostIP: iPAddress);
-                else
-                    resultados = domains.CreateAsync(domainname, zones[zonename],
-                        DelegationType, account, service, NameServers: ns);
+                return Challenge();
             }
 
-            return RedirectToAction("My");
+            model.DomainName = (model.DomainName ?? string.Empty).Trim().ToLowerInvariant();
+            model.ZoneName = (model.ZoneName ?? string.Empty).Trim().ToLowerInvariant();
+
+            var zones = await service.GetAvailableZonesAsync();
+            var selectedZone = zones.FirstOrDefault(zone =>
+                string.Equals(zone.Key, model.ZoneName, StringComparison.OrdinalIgnoreCase));
+            if (string.IsNullOrWhiteSpace(selectedZone.Key))
+            {
+                ModelState.AddModelError(nameof(model.ZoneName), "The selected zone is not available.");
+            }
+
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
+
+            SearchModel availability = await service.SearchDomainAsync(model.DomainName, selectedZone.Value);
+            if (!availability.Available)
+            {
+                ModelState.AddModelError(string.Empty, availability.Message);
+                return View(model);
+            }
+
+            var account = new AccountModel
+            {
+                AccountId = accountId,
+                DisplayName = User.Claims.FirstOrDefault(claim => claim.Type == "name")?.Value ?? accountId
+            };
+            var request = new DomainRegistrationRequest
+            {
+                DomainName = model.DomainName,
+                ZoneId = selectedZone.Value,
+                ZoneName = selectedZone.Key,
+                DelegationType = model.DelegationType,
+                HostedRecordType = model.HostedRecordType,
+                HostedTarget = model.HostedTarget,
+                NameServers = model.GetNormalizedNameservers()
+            };
+
+            try
+            {
+                var domains = new Domains(service);
+                var result = await domains.CreateAsync(request, account);
+                if (!result.Ok)
+                {
+                    ModelState.AddModelError(string.Empty, result.Message);
+                    return View(model);
+                }
+
+                TempData["Success"] = $"{model.DomainName}.{model.ZoneName} has been registered.";
+                return RedirectToAction("My");
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Domain registration failed for {DomainName}.{ZoneName}.",
+                    model.DomainName,
+                    model.ZoneName);
+                ModelState.AddModelError(string.Empty, "The domain could not be registered. Try again.");
+                return View(model);
+            }
         }
         
         public async Task<IActionResult> RegisterAsync(string id, string zone)
@@ -97,7 +101,13 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
             SearchModel model = await service.SearchDomainAsync(domainName, zones[zone].ToLower());
 
-            return View(model);
+            return View(new DomainRegistrationViewModel
+            {
+                DomainName = model.Domain,
+                ZoneName = model.ZoneName,
+                DelegationType = "Hosted",
+                HostedRecordType = HostedRecordRules.AddressType
+            });
         }
 
         public IActionResult My()
@@ -242,7 +252,11 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             }
 
             var domains = new Domains(service);
-            var (ok, msg) = await domains.DeleteHostedRecordAsync(zoneId, DomainName, RecordId);
+            var (ok, msg) = await domains.DeleteHostedRecordAsync(
+                zoneId,
+                DomainName,
+                RecordId,
+                User?.Identity?.Name ?? string.Empty);
             TempData[ok ? "Success" : "Error"] = msg;
 
             return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });

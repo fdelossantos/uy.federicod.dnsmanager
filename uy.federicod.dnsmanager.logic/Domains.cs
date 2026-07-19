@@ -45,6 +45,9 @@ namespace uy.federicod.dnsmanager.logic
                 {
                     AccountId = AccountId,
                     DelegationType = reader["DelegationType"].ToString(),
+                    HostedRecordType = reader["HostedRecordType"] == DBNull.Value
+                        ? null
+                        : reader["HostedRecordType"].ToString(),
                     DomainName = reader["DomainName"].ToString(),
                     ZoneId = reader["ZoneId"].ToString()
                 });
@@ -77,6 +80,9 @@ namespace uy.federicod.dnsmanager.logic
                 {
                     AccountId = AccountId,
                     DelegationType = reader["DelegationType"].ToString(),
+                    HostedRecordType = reader["HostedRecordType"] == DBNull.Value
+                        ? null
+                        : reader["HostedRecordType"].ToString(),
                     DomainName = reader["DomainName"].ToString(),
                     ZoneId = reader["ZoneId"].ToString()
                 };
@@ -94,62 +100,94 @@ namespace uy.federicod.dnsmanager.logic
 
         }
 
-        public Dictionary<string, string> CreateAsync(string DomainName, string ZoneId, 
-            string DelegationType, AccountModel accountModel, Service service, 
-            [Optional] IPAddress HostIP, [Optional] List<string> NameServers)
+        public async Task<(bool Ok, string Message)> CreateAsync(
+            DomainRegistrationRequest request,
+            AccountModel accountModel)
         {
-            // Obtiene o crea la cuenta de usuario
-            AccountModel realAccount = service.GetAccountOrCreate(accountModel.AccountId, accountModel.DisplayName);
+            AccountModel realAccount = s.GetAccountOrCreate(accountModel.AccountId, accountModel.DisplayName);
 
-            // Crea un modelDomain para usar en las registraciones
+            bool isHosted = string.Equals(request.DelegationType, "Hosted", StringComparison.Ordinal);
+            bool isDelegated = string.Equals(request.DelegationType, "Delegated", StringComparison.Ordinal);
+            if (!isHosted && !isDelegated)
+            {
+                return (false, "Choose how DNS should be managed.");
+            }
+
+            string? normalizedRecordType = null;
+            string? normalizedTarget = null;
+            if (isHosted)
+            {
+                if (!HostedRecordRules.TryNormalizeRecordType(request.HostedRecordType, out normalizedRecordType))
+                {
+                    return (false, "Choose A or CNAME as the base record type.");
+                }
+
+                string baseFqdn = $"{request.DomainName}.{request.ZoneName}";
+                if (!HostedRecordRules.TryNormalizeTarget(
+                        normalizedRecordType,
+                        request.HostedTarget,
+                        baseFqdn,
+                        out normalizedTarget,
+                        out var validationError))
+                {
+                    return (false, validationError);
+                }
+            }
+            else if (request.NameServers.Count == 0 ||
+                     request.NameServers.Any(nameserver =>
+                         !HostedRecordRules.TryNormalizeHostname(nameserver, out _)))
+            {
+                return (false, "Enter at least one valid fully qualified name server.");
+            }
+
             DomainModel model = new()
             {
-                DomainName = DomainName,
-                ZoneId = ZoneId,
+                DomainName = request.DomainName,
+                ZoneId = request.ZoneId,
                 AccountId = accountModel.AccountId,
-                DelegationType = DelegationType
+                DelegationType = request.DelegationType,
+                HostedRecordType = normalizedRecordType,
+                NameServers = request.NameServers.ToList()
             };
-            if (NameServers != null)
+
+            if (!AddToDB(model, realAccount))
             {
-                model.NameServers = NameServers;
+                return (false, "The domain registration could not be saved.");
             }
 
-            Dictionary<string, string> results = [];
+            if (isHosted)
+            {
+                try
+                {
+                    await RegisterHostedAsync(model, normalizedTarget!);
+                    return (true, $"{normalizedRecordType} record created.");
+                }
+                catch (Exception ex)
+                {
+                    await DeleteDomainRegistrationAsync(
+                        model.DomainName,
+                        model.ZoneId,
+                        model.AccountId);
+                    return (false, ex.Message);
+                }
+            }
 
-            // Registra el dominio en la base datos
-            if (AddToDB(model, realAccount))
+            Dictionary<string, string>? delegatedResults = RegisterDelegated(model);
+            if (delegatedResults is null)
             {
-                // Si pudo agregarlo, lo lleva a Cloudflare 
-                if (model.DelegationType == "Hosted")
-                {
-                    // Agrega un registro A
-                    if(RegisterHosted(model, HostIP))
-                    {
-                        results.Add(model.DomainName, "Ok");
-                    }
-                    else
-                    {
-                        results.Add(model.DomainName, "Failed");
-                    }
-                }
-                else
-                {
-                    // Delega el dominio en una lista de NS
-                    results = RegisterDelegated(model);
-                }
+                return (true, "Delegation created.");
             }
-            else
-            {
-                throw new Exception("Can not create domain");
-            }
-            return results;
+
+            return (false, delegatedResults.Values.FirstOrDefault() ?? "The delegation could not be created.");
         }
 
         private bool AddToDB(DomainModel domainModel, AccountModel accountModel)
         {
             try
             {
-                string query = "INSERT INTO Domains (DomainName, ZoneId, AccountId, DelegationType) VALUES (@DomainName, @ZoneId, @AccountId, @DelegationType)";
+                string query = @"INSERT INTO Domains
+                    (DomainName, ZoneId, AccountId, DelegationType, HostedRecordType)
+                    VALUES (@DomainName, @ZoneId, @AccountId, @DelegationType, @HostedRecordType)";
                 MySqlConnection connection = new(s.DBConnString);
                 connection.Open();
 
@@ -158,6 +196,9 @@ namespace uy.federicod.dnsmanager.logic
                 command.Parameters.AddWithValue("ZoneId", domainModel.ZoneId);
                 command.Parameters.AddWithValue("AccountId", accountModel.AccountId);
                 command.Parameters.AddWithValue("DelegationType", domainModel.DelegationType);
+                command.Parameters.AddWithValue(
+                    "HostedRecordType",
+                    (object?)domainModel.HostedRecordType ?? DBNull.Value);
 
                 int result = command.ExecuteNonQuery();
 
@@ -213,26 +254,20 @@ namespace uy.federicod.dnsmanager.logic
             }
         }
 
-        private bool RegisterHosted(DomainModel model, IPAddress iPAddress)
+        private async Task RegisterHostedAsync(DomainModel model, string normalizedTarget)
         {
-            NewDnsRecord dnsRecord = new()
+            NewDnsRecord dnsRecord = HostedRecordRules.BuildBaseRecord(
+                model.DomainName,
+                model.HostedRecordType!,
+                normalizedTarget,
+                model.AccountId);
+
+            var cfResult = await s.client.Zones.DnsRecords.AddAsync(model.ZoneId, dnsRecord);
+            if (!cfResult.Success)
             {
-                Name = model.DomainName,
-                Content = iPAddress.ToString(),
-                Priority = 0,
-                Proxied = false,
-                Ttl = 1,
-                Type = CloudFlare.Client.Enumerators.DnsRecordType.A,
-                Comment = model.AccountId
-            };
-            var cfresult = s.client.Zones.DnsRecords.AddAsync(model.ZoneId, dnsRecord).Result;
-            if (cfresult.Success)
-            {
-                return true;
-            }
-            else
-            {
-                throw new Exception(cfresult.Errors[0].Message);
+                throw new Exception(
+                    cfResult.Errors?.FirstOrDefault()?.Message ??
+                    "Cloudflare rejected the hosted record.");
             }
         }
 
@@ -488,8 +523,7 @@ namespace uy.federicod.dnsmanager.logic
                         var content = r.GetProperty("content").GetString() ?? "";
                         var id = r.GetProperty("id").GetString() ?? "";
 
-                        bool isBaseA = string.Equals(type, "A", StringComparison.OrdinalIgnoreCase) &&
-                                       string.Equals(nameLower, baseFqdn, StringComparison.OrdinalIgnoreCase);
+                        bool isBaseRecord = HostedRecordRules.IsBaseRecord(type, nameLower, baseFqdn);
 
                         all.Add(new DnsRecordModel
                         {
@@ -497,8 +531,8 @@ namespace uy.federicod.dnsmanager.logic
                             Type = type,
                             Name = name,
                             Content = content,
-                            Deletable = !isBaseA,
-                            IsBaseA = isBaseA
+                            Deletable = !isBaseRecord,
+                            IsBaseRecord = isBaseRecord
                         });
                     }
                 }
@@ -516,7 +550,7 @@ namespace uy.federicod.dnsmanager.logic
             }
 
             return all
-                .OrderByDescending(x => x.IsBaseA)
+                .OrderByDescending(x => x.IsBaseRecord)
                 .ThenBy(x => x.Type)
                 .ThenBy(x => x.Name)
                 .ToList();
@@ -540,15 +574,34 @@ namespace uy.federicod.dnsmanager.logic
             string fqdn = ResolveToFqdn(inputName, baseFqdn, zoneName);
             var cfType = ParseType(type);
 
+            if (!HostedRecordRules.IsWithinDomainTree(fqdn, baseFqdn))
+                return (false, "The record name must be the hosted domain or one of its descendants.");
+
+            var registration = await GetHostedRegistrationAsync(domainName, zoneId, accountId);
+            if (!registration.Exists)
+                return (false, "The hosted domain was not found for the current user.");
+
+            bool isBaseName = string.Equals(fqdn, baseFqdn, StringComparison.OrdinalIgnoreCase);
+            if (isBaseName && string.Equals(
+                    registration.HostedRecordType,
+                    HostedRecordRules.CnameType,
+                    StringComparison.OrdinalIgnoreCase))
+            {
+                return (false, "A CNAME-based domain cannot have additional records at the base hostname.");
+            }
+
             // Validaciones básicas según tipo
-            if (cfType == DnsRecordType.A && !System.Net.IPAddress.TryParse(content, out _))
+            if (cfType == DnsRecordType.A &&
+                (!System.Net.IPAddress.TryParse(content, out var address) ||
+                 address.AddressFamily != System.Net.Sockets.AddressFamily.InterNetwork))
                 return (false, "Content must be a valid IPv4 for A records.");
             if (cfType == DnsRecordType.Cname)
             {
-                content = NormalizeHost(content);
-                if (string.IsNullOrWhiteSpace(content)) return (false, "Content must be a valid hostname for CNAME.");
+                if (!HostedRecordRules.TryNormalizeHostname(content, out var normalizedHostname))
+                    return (false, "Content must be a valid fully qualified hostname for CNAME.");
+                content = normalizedHostname;
                 // Evitar CNAME en el baseFQDN si ya existe A base (restricción)
-                if (string.Equals(fqdn, baseFqdn, StringComparison.OrdinalIgnoreCase))
+                if (isBaseName)
                     return (false, "Cannot create CNAME on base host because an A base record exists.");
             }
 
@@ -592,7 +645,11 @@ namespace uy.federicod.dnsmanager.logic
         }
 
         // Eliminar registro Hosted (protegido: no borra el A base)
-        public async Task<(bool Ok, string Msg)> DeleteHostedRecordAsync(string zoneId, string domainName, string recordId)
+        public async Task<(bool Ok, string Msg)> DeleteHostedRecordAsync(
+            string zoneId,
+            string domainName,
+            string recordId,
+            string accountId)
         {
             if (string.IsNullOrWhiteSpace(zoneId)) return (false, "ZoneId is required.");
             if (string.IsNullOrWhiteSpace(domainName)) return (false, "DomainName is required.");
@@ -604,14 +661,20 @@ namespace uy.federicod.dnsmanager.logic
 
             string baseFqdn = $"{domainName}.{zoneName}".ToLowerInvariant();
 
+            var registration = await GetHostedRegistrationAsync(domainName, zoneId, accountId);
+            if (!registration.Exists)
+                return (false, "The hosted domain was not found for the current user.");
+
             var details = await s.client.Zones.DnsRecords.GetDetailsAsync(zoneId, recordId);
             if (!details.Success || details.Result == null)
                 return (false, "Record not found.");
 
             var rec = details.Result;
-            bool isBaseA = rec.Type == DnsRecordType.A && string.Equals(rec.Name?.ToLowerInvariant(), baseFqdn, StringComparison.OrdinalIgnoreCase);
-            if (isBaseA)
-                return (false, "The original A record cannot be deleted.");
+            if (!HostedRecordRules.IsWithinDomainTree(rec.Name, baseFqdn))
+                return (false, "The record does not belong to the hosted domain.");
+
+            if (HostedRecordRules.IsBaseRecord(rec.Type.ToString(), rec.Name, baseFqdn))
+                return (false, "The original hosted record cannot be deleted individually.");
 
             var del = await s.client.Zones.DnsRecords.DeleteAsync(zoneId, recordId);
             if (!del.Success)
@@ -623,6 +686,37 @@ namespace uy.federicod.dnsmanager.logic
         }
 
         #region Helpers (privados)
+
+        private async Task<(bool Exists, string? HostedRecordType)> GetHostedRegistrationAsync(
+            string domainName,
+            string zoneId,
+            string accountId)
+        {
+            using var connection = new MySqlConnection(s.DBConnString);
+            await connection.OpenAsync();
+
+            using var command = connection.CreateCommand();
+            command.CommandText = @"SELECT HostedRecordType
+FROM Domains
+WHERE DomainName = @DomainName
+  AND ZoneId = @ZoneId
+  AND AccountId = @AccountId
+  AND DelegationType = 'Hosted'";
+            command.Parameters.AddWithValue("@DomainName", domainName);
+            command.Parameters.AddWithValue("@ZoneId", zoneId);
+            command.Parameters.AddWithValue("@AccountId", accountId);
+
+            object? value = await command.ExecuteScalarAsync();
+            if (value is null)
+            {
+                return (false, null);
+            }
+
+            string hostedRecordType = value == DBNull.Value
+                ? HostedRecordRules.AddressType
+                : value.ToString() ?? HostedRecordRules.AddressType;
+            return (true, hostedRecordType);
+        }
 
         private static string NormalizeNs(string ns)
         {

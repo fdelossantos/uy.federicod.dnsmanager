@@ -16,14 +16,14 @@ El recurso que se asigna a cada estudiante es un subdominio bajo una zona compar
 2. Busca una etiqueta de subdominio en las zonas habilitadas.
 3. La aplicacion consulta Cloudflare para determinar si ya existe un registro A o NS con ese nombre y controla el limite operativo de 200 registros por zona.
 4. El usuario elige uno de dos modelos:
-   - `Hosted`: se crea un registro A inicial y luego se pueden administrar registros A, CNAME, TXT y MX bajo el subdominio.
+   - `Hosted`: el usuario elige un registro base A o CNAME y luego puede administrar registros A, CNAME, TXT y MX bajo el subdominio.
    - `Delegated`: se crean registros NS para entregar la resolucion del subdominio a nameservers indicados por el usuario.
 5. MariaDB relaciona la registracion con `User.Identity.Name` y conserva metadatos de dominios, nameservers y registros.
 6. Al eliminar una registracion, la aplicacion busca en Cloudflare el nombre base y sus descendientes, elimina esos registros y limpia los metadatos locales.
 
 ## Limites de responsabilidad
 
-Cloudflare es la autoridad para el estado DNS publicado. MariaDB no reemplaza a Cloudflare ni actua como servidor DNS: mantiene la lista de zonas que la aplicacion puede ofrecer y el contexto necesario para presentar y administrar las registraciones de los usuarios.
+Cloudflare es la autoridad para el estado DNS publicado. MySQL/MariaDB no reemplaza a Cloudflare ni actua como servidor DNS: mantiene la lista de zonas que la aplicacion puede ofrecer y el contexto necesario para presentar y administrar las registraciones de los usuarios.
 
 La identidad institucional se usa como identificador de cuenta. La interfaz enumera los dominios asociados a ese identificador y las operaciones deben conservar esa relacion al evolucionar el codigo.
 
@@ -39,9 +39,9 @@ La tabla `Zones` contiene los Zone IDs y el indicador `Enabled`. La aplicacion n
 
 ### Dos modos de aprendizaje
 
-`Hosted` permite practicar registros individuales desde la aplicacion. `Delegated` permite practicar autoridad DNS y nameservers externos. Ambos modelos comparten la misma reserva de nombre, pero generan configuraciones distintas en Cloudflare.
+`Hosted` permite practicar registros individuales desde la aplicacion. Su registro base puede ser A, para publicar una direccion IPv4, o CNAME, para apuntar a un hostname entregado por otra plataforma. `Delegated` permite practicar autoridad DNS y nameservers externos. Ambos modelos comparten la misma reserva de nombre, pero generan configuraciones distintas en Cloudflare.
 
-El registro A base creado para un dominio `Hosted` queda bloqueado contra borrado individual. Para retirarlo se elimina la registracion completa; esto evita dejar un dominio alojado sin su registro principal por accidente.
+El registro base A o CNAME creado para un dominio `Hosted` queda bloqueado contra borrado individual. Para retirarlo se elimina la registracion completa; esto evita dejar un dominio alojado sin su registro principal por accidente. Un CNAME base no puede coexistir con otros registros en el mismo nombre, aunque el usuario puede administrar registros en nombres descendientes.
 
 ### Cloudflare como estado efectivo y MariaDB como metadatos
 
@@ -63,9 +63,9 @@ Existe un handler de autenticacion simple controlado por configuracion para smok
 
 Se mantuvo ASP.NET Core MVC porque el producto consiste en formularios, validacion, acciones y vistas renderizadas en servidor. La separacion actual deja la orquestacion HTTP en controladores y las operaciones DNS/persistencia en el proyecto de logica.
 
-### MariaDB y SQL explicito
+### MySQL/MariaDB y SQL explicito
 
-La aplicacion fue migrada desde SQL Server a MariaDB para ejecutarse en AlmaLinux/cPanel. Se usa `MySqlConnector` con consultas parametrizadas y un script idempotente en `schema/mysql/001_create_dnsmanager.sql`. El proyecto historico `dnsmanagerdb` se conserva como referencia del origen, pero no define el esquema productivo actual.
+La aplicacion fue migrada desde SQL Server a una base compatible con MySQL/MariaDB para ejecutarse en AlmaLinux/cPanel. Se usa `MySqlConnector` con consultas parametrizadas, un esquema idempotente y migraciones incrementales bajo `schema/mysql/`. Produccion informo MySQL `8.0.46` el 2026-07-19; los scripts conservan compatibilidad con MariaDB. El proyecto historico `dnsmanagerdb` se conserva como referencia del origen, pero no define el esquema productivo actual.
 
 ### Kestrel detras de cPanel
 

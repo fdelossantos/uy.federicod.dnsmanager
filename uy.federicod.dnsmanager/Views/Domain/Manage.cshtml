@@ -15,6 +15,14 @@
                     <h5 class="card-title">@(Model.DomainName).@Model.ZoneName</h5>
 @if (Model.DelegationType == "Hosted")
 {
+    @if (string.Equals(Model.HostedRecordType, "CNAME", StringComparison.OrdinalIgnoreCase))
+    {
+        <div class="alert alert-info" role="status">
+            The base hostname uses CNAME. Add new records only below it, for example
+            <strong>www.@Model.DomainName.@Model.ZoneName</strong>.
+        </div>
+    }
+
     <div class="row mb-3">
         <div class="col-12">
             <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addRecordPanel" aria-expanded="false" aria-controls="addRecordPanel">
@@ -98,7 +106,13 @@
 @foreach (var r in records)
 {
     <tr>
-        <td>@r.Type @(r.IsBaseA ? " (base)" : "")</td>
+        <td>
+            @r.Type
+            @if (r.IsBaseRecord)
+            {
+                <span class="badge bg-light text-dark">Base record</span>
+            }
+        </td>
         <td>@r.Name</td>
         <td>@r.Content</td>
         <td>

@@ -20,3 +20,143 @@ html {
 body {
   margin-bottom: 60px;
 }
+
+.validation-summary-valid {
+  display: none;
+}
+
+.registration-panel {
+  max-width: 860px;
+}
+
+.registration-domain {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 1.25rem 0;
+  border-bottom: 1px solid #e6e9ef;
+}
+
+.registration-domain strong {
+  color: #012970;
+  font-size: clamp(1.15rem, 2vw, 1.45rem);
+  overflow-wrap: anywhere;
+}
+
+.registration-eyebrow {
+  color: #6c757d;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.registration-section {
+  margin: 0;
+  padding: 1.5rem 0;
+  border: 0;
+  border-bottom: 1px solid #e6e9ef;
+}
+
+.registration-section legend {
+  float: none;
+  width: auto;
+  margin-bottom: 0.25rem;
+  color: #012970;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.registration-choices {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+
+.registration-choice {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 0.75rem;
+  align-items: start;
+  min-height: 100%;
+  padding: 1rem;
+  border: 1px solid #d9dee8;
+  border-radius: 0.4rem;
+  background: #fff;
+  cursor: pointer;
+  transition: border-color 140ms ease, background-color 140ms ease, box-shadow 140ms ease;
+}
+
+.registration-choice:hover {
+  border-color: #8aa5d6;
+  background: #f8faff;
+}
+
+.registration-choice:has(input:checked) {
+  border-color: #4154f1;
+  background: #f5f6ff;
+  box-shadow: inset 3px 0 0 #4154f1;
+}
+
+.registration-choice:has(input:focus-visible) {
+  outline: 3px solid rgba(65, 84, 241, 0.25);
+  outline-offset: 2px;
+}
+
+.registration-choice input[type="radio"] {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  accent-color: #4154f1;
+}
+
+.registration-choice span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.registration-choice small {
+  color: #6c757d;
+  line-height: 1.4;
+}
+
+.registration-fields {
+  opacity: 0;
+  transform: translateY(-4px);
+  transition: opacity 140ms ease, transform 140ms ease;
+}
+
+.registration-fields.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.registration-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  padding-top: 1.5rem;
+}
+
+@media (max-width: 767.98px) {
+  .registration-choices {
+    grid-template-columns: 1fr;
+  }
+
+  .registration-actions {
+    flex-direction: column-reverse;
+  }
+
+  .registration-actions .btn {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .registration-choice,
+  .registration-fields {
+    transition: none;
+  }
+}

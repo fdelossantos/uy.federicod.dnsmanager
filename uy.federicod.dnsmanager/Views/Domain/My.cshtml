@@ -21,7 +21,8 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Zone</th>
-                                <th>Delegation Type</th>
+                                <th>DNS management</th>
+                                <th>Base record</th>
                                 <th>Action</th>
                                 <th>Manage DNS</th>
                             </tr>
@@ -37,7 +38,17 @@
                                             <a href="@url" target="_blank">@domain.DomainName</a>
                                         </td>
                                         <td>@domain.ZoneName</td>
-                                        <td>@domain.DelegationType</td>
+                                        <td>@(domain.DelegationType == "Hosted" ? "Managed here" : "External name servers")</td>
+                                        <td>
+                                            @if (domain.DelegationType == "Hosted")
+                                            {
+                                                <span class="badge bg-light text-dark">@(domain.HostedRecordType ?? "A")</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="text-muted">&mdash;</span>
+                                            }
+                                        </td>
                                         <td><a class="btn btn-primary" asp-action="Edit" asp-controller="Domain" asp-route-id="@domain.DomainName" asp-route-zonename="@domain.ZoneName">Edit</a></td>
                                         <td><a class="btn btn-primary" asp-action="Manage" asp-controller="Domain" asp-route-id="@domain.DomainName" asp-route-zonename="@domain.ZoneName">Manage DNS</a></td>
                                         </tr>
@@ -46,7 +57,7 @@
                             else
                             {
                                 <tr>
-                                    <td colspan="5">You don't have any domain yet.</td>
+                                    <td colspan="6">You don't have any domain yet.</td>
                                 </tr>
                             }
                         </tbody>

@@ -46,13 +46,27 @@ Return `Authentication__Provider` to `Entra` before handing the service back.
 
 ## Database
 
-Create the MariaDB database and least-privilege user, then run:
+Create the MySQL/MariaDB database and least-privilege user, then run:
 
 ```bash
 mysql fdcom_dnsmanager < schema/mysql/001_create_dnsmanager.sql
 ```
 
 The seed zones are `tda.lat`, `marketplace.uy`, and `therealcake.com`.
+
+The production server reported MySQL `8.0.46` on 2026-07-19. The schema remains compatible with MariaDB through `MySqlConnector`. For an existing installation, apply incremental migrations in order; Hosted A/CNAME support requires:
+
+```bash
+mysql fdcom_dnsmanager < schema/mysql/002_add_hosted_record_type.sql
+```
+
+The migration is idempotent, adds `Domains.HostedRecordType`, backfills existing Hosted registrations to `A`, and leaves Delegated registrations with a null subtype.
+
+## Hosted A/CNAME smoke test
+
+Do not expose `Authentication__Provider=Test` through the public virtual host. Start a temporary instance on a different loopback port with a root-only copy of the environment file, override only the authentication provider and URL, and reach it through an SSH tunnel. Use unique A and CNAME names, verify Cloudflare and public DNS, delete both registrations through the application, and confirm that no DNS or database rows remain.
+
+The public service must remain on `Authentication__Provider=Entra`. Remove the temporary environment file and transient unit after the test.
 
 ## Validation
 

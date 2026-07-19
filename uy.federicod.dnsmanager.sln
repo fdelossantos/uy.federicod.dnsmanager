@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "uy.federicod.dnsmanager.UI"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "uy.federicod.dnsmanager.logic", "uy.federicod.dnsmanager.logic\uy.federicod.dnsmanager.logic.csproj", "{C095A06D-3213-4781-BD1A-49E7CD989AC2}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "uy.federicod.dnsmanager.tests", "uy.federicod.dnsmanager.tests\uy.federicod.dnsmanager.tests.csproj", "{B83A0690-5A59-4CEF-B69F-857F3E7D79D8}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C095A06D-3213-4781-BD1A-49E7CD989AC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B83A0690-5A59-4CEF-B69F-857F3E7D79D8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B83A0690-5A59-4CEF-B69F-857F3E7D79D8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B83A0690-5A59-4CEF-B69F-857F3E7D79D8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B83A0690-5A59-4CEF-B69F-857F3E7D79D8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

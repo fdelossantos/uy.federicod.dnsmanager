@@ -18,6 +18,7 @@ CREATE TABLE IF NOT EXISTS Domains (
     ZoneId varchar(50) NOT NULL,
     AccountId varchar(256) NOT NULL,
     DelegationType varchar(10) NOT NULL,
+    HostedRecordType varchar(5) NULL,
     PRIMARY KEY (DomainName, ZoneId),
     KEY IX_Domains_AccountId (AccountId),
     CONSTRAINT FK_Domains_Zones FOREIGN KEY (ZoneId) REFERENCES Zones (ZoneId),

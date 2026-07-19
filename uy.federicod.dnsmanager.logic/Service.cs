@@ -143,7 +143,7 @@ namespace uy.federicod.dnsmanager.logic
             if (totalRecords >= 200)
             {
                 searchModel.Available = false;
-                searchModel.Message = $"La zona ha alcanzado el límite máximo de registros DNS ({totalRecords}/200).";
+                searchModel.Message = $"This zone has reached its DNS record limit ({totalRecords}/200).";
                 return searchModel;
             }
 
@@ -158,7 +158,22 @@ namespace uy.federicod.dnsmanager.logic
             if (record.Result.Count > 0)
             {
                 searchModel.Available = false;
-                searchModel.Message = "El subdominio ya existe como registro tipo A.";
+                searchModel.Message = "This hostname already exists as an A record.";
+                return searchModel;
+            }
+
+            // Buscar si ya existe como alias Hosted
+            dnsRecordFilter = new DnsRecordFilter
+            {
+                Match = CloudFlare.Client.Enumerators.MatchType.All,
+                Name = $"{Subdomain}.{zone.Result.Name}",
+                Type = DnsRecordType.Cname
+            };
+            record = await client.Zones.DnsRecords.GetAsync(ZoneId, dnsRecordFilter);
+            if (record.Result.Count > 0)
+            {
+                searchModel.Available = false;
+                searchModel.Message = "This hostname already exists as a CNAME record.";
                 return searchModel;
             }
 
@@ -173,12 +188,12 @@ namespace uy.federicod.dnsmanager.logic
             if (record.Result.Count > 0)
             {
                 searchModel.Available = false;
-                searchModel.Message = "El subdominio ya existe como registro tipo NS.";
+                searchModel.Message = "This hostname already exists as an NS record.";
                 return searchModel;
             }
 
             searchModel.Available = true;
-            searchModel.Message = $"Subdominio disponible para crear. Registros actuales: {totalRecords}/200.";
+            searchModel.Message = $"This hostname is available. Current DNS records: {totalRecords}/200.";
             return searchModel;
         }
 

@@ -1,160 +1,160 @@
-﻿@model uy.federicod.dnsmanager.logic.Models.SearchModel
+@model uy.federicod.dnsmanager.Models.DomainRegistrationViewModel
 @{
     ViewData["Title"] = "Register domain";
-
 }
+
 <div class="pagetitle">
     <h1>@ViewData["Title"]</h1>
-</div><!-- End Page Title -->
+    <p class="text-muted mb-0">Choose who manages DNS and where the base hostname should point.</p>
+</div>
 
 <section class="section">
     <div class="row">
-        <div class="col-lg-6">
-
-            <div class="card">
+        <div class="col-xl-8 col-lg-9">
+            <div class="card registration-panel">
                 <div class="card-body">
-                    <h5 class="card-title">Domain: <strong>@(Model.Domain).@Model.ZoneName</strong></h5>
-                    @if (!string.IsNullOrEmpty(ViewBag.Message))
-                    {
-                        <p style="color: red">@ViewBag.Message</p>
-                    }
-                    
-                    <form asp-action="Register" asp-controller="Domain" id="registerForm">
-                        <div class="row mb-3">
-                            <label for="DelegationType" class="col-sm-3 col-form-label">Delegation type</label>
-                            <div class="col-sm-9">
-                                <select id="DelegationType" name="DelegationType" class="form-select" aria-label="Choose the type of delegation.">
-                                    <option value="Hosted">Hosted</option>
-                                    <option value="Delegated">Delegated</option>
-                                </select>
+                    <div class="registration-domain">
+                        <span class="registration-eyebrow">Selected hostname</span>
+                        <strong>@Model.DomainName.@Model.ZoneName</strong>
+                    </div>
+
+                    <form asp-action="Register" asp-controller="Domain" method="post" id="registerForm">
+                        <input asp-for="DomainName" type="hidden" />
+                        <input asp-for="ZoneName" type="hidden" />
+
+                        <div asp-validation-summary="ModelOnly" class="alert alert-danger" tabindex="-1"></div>
+
+                        <fieldset class="registration-section">
+                            <legend>DNS management</legend>
+                            <p class="text-muted">Keep records in DNS Manager or delegate the hostname to another provider.</p>
+
+                            <div class="registration-choices" role="radiogroup" aria-label="DNS management">
+                                <label class="registration-choice" for="managementHosted">
+                                    <input asp-for="DelegationType" id="managementHosted" type="radio" value="Hosted" />
+                                    <span>
+                                        <strong>Managed here</strong>
+                                        <small>Create and manage DNS records in this application.</small>
+                                    </span>
+                                </label>
+                                <label class="registration-choice" for="managementDelegated">
+                                    <input asp-for="DelegationType" id="managementDelegated" type="radio" value="Delegated" />
+                                    <span>
+                                        <strong>External name servers</strong>
+                                        <small>Delegate this hostname to your own DNS provider.</small>
+                                    </span>
+                                </label>
                             </div>
-                        </div>
-                        
-                        <div id="hostedRow" class="row mb-3">
-                            <p>If you selected Hosted, you have to provide an IP Address.</p>
-                            <label for="IPAddress" class="col-sm-3 col-form-label">IP Address</label>
-                            <div class="col-sm-9">
-                                <input type="text" class="form-control" name="IPAddress" id="IPAddress" />
-                            </div>
+                            <span asp-validation-for="DelegationType" class="text-danger"></span>
+                        </fieldset>
+
+                        <div id="hostedFields" class="registration-fields is-visible">
+                            <fieldset class="registration-section">
+                                <legend>Base record</legend>
+                                <p class="text-muted">Choose the type that matches the application you are publishing.</p>
+
+                                <div class="registration-choices registration-choices-inline" role="radiogroup" aria-label="Base record type">
+                                    <label class="registration-choice" for="recordTypeA">
+                                        <input asp-for="HostedRecordType" id="recordTypeA" type="radio" value="A" />
+                                        <span>
+                                            <strong>IP address <span class="badge bg-light text-dark">A</span></strong>
+                                            <small>Point directly to an IPv4 address.</small>
+                                        </span>
+                                    </label>
+                                    <label class="registration-choice" for="recordTypeCname">
+                                        <input asp-for="HostedRecordType" id="recordTypeCname" type="radio" value="CNAME" />
+                                        <span>
+                                            <strong>Hostname alias <span class="badge bg-light text-dark">CNAME</span></strong>
+                                            <small>Point to a hostname supplied by another platform.</small>
+                                        </span>
+                                    </label>
+                                </div>
+                                <span asp-validation-for="HostedRecordType" class="text-danger"></span>
+
+                                <div class="mt-4">
+                                    <label asp-for="HostedTarget" class="form-label" id="hostedTargetLabel">IPv4 address</label>
+                                    <input asp-for="HostedTarget" class="form-control" id="hostedTarget" autocomplete="off" />
+                                    <div class="form-text" id="hostedTargetHelp">Example: 203.0.113.10</div>
+                                    <span asp-validation-for="HostedTarget" class="text-danger"></span>
+                                </div>
+                            </fieldset>
                         </div>
 
-                        <div id="delegatedRow" class="row mb-3">
-                            <p>If you selected Delegated, you have to provide the FQDN of at least one Name Server.</p>
-                            <label for="nameservers" class="col-sm-3 col-form-label">Name Servers</label>
-                            <div class="col-sm-9">
-                                <textarea class="form-control" id="nameservers" name="nameservers" style="height: 100px"></textarea>
-                            </div>
+                        <div id="delegatedFields" class="registration-fields" hidden>
+                            <fieldset class="registration-section">
+                                <legend>Name servers</legend>
+                                <p class="text-muted">Enter at least one fully qualified name server, separated by spaces or new lines.</p>
+                                <label asp-for="Nameservers" class="form-label">External name servers</label>
+                                <textarea asp-for="Nameservers" class="form-control" id="nameservers" rows="4" placeholder="ns1.provider.example&#10;ns2.provider.example"></textarea>
+                                <span asp-validation-for="Nameservers" class="text-danger"></span>
+                            </fieldset>
                         </div>
 
-                        <div id="validationErrors" style="color: red; margin-bottom: 1rem;"></div>
-
-                        <input type="hidden" name="domainname" id="domainname" value="@Model.Domain" />
-                        <input type="hidden" name="zonename" id="zonename" value="@Model.ZoneName" />
-                        <p>&nbsp;</p>
-                        <input class="btn btn-primary" type="submit" value="Accept" name="Accept" id="Accept" />
+                        <div class="registration-actions">
+                            <a asp-controller="Search" asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                            <button class="btn btn-primary" type="submit">Register domain</button>
+                        </div>
                     </form>
-
-                    <script>
-                        (function() {
-                            const select = document.getElementById('DelegationType');
-                            const hostedRow = document.getElementById('hostedRow');
-                            const delegatedRow = document.getElementById('delegatedRow');
-                            const ipInput = document.getElementById('IPAddress');
-                            const nsInput = document.getElementById('nameservers');
-                            const form = document.getElementById('registerForm');
-                            const errorDiv = document.getElementById('validationErrors');
-
-                            const ipv4Regex = /^(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)(\.(25[0-5]|2[0-4]\d|1\d{2}|[1-9]?\d)){3}$/;
-                            const ipv6Regex = /^(([0-9A-Fa-f]{1,4}:){7}[0-9A-Fa-f]{1,4}|(([0-9A-Fa-f]{1,4}:){1,7}:)|(([0-9A-Fa-f]{1,4}:){1,6}:[0-9A-Fa-f]{1,4})|(([0-9A-Fa-f]{1,4}:){1,5}(:[0-9A-Fa-f]{1,4}){1,2})|(([0-9A-Fa-f]{1,4}:){1,4}(:[0-9A-Fa-f]{1,4}){1,3})|(([0-9A-Fa-f]{1,4}:){1,3}(:[0-9A-Fa-f]{1,4}){1,4})|(([0-9A-Fa-f]{1,4}:){1,2}(:[0-9A-Fa-f]{1,4}){1,5})|([0-9A-Fa-f]{1,4}:((:[0-9A-Fa-f]{1,4}){1,6}))|(:((:[0-9A-Fa-f]{1,4}){1,7}|:)))(%.+)?$/;
-                            const fqdnRegex = /^(?=.{1,253}$)(?:[a-zA-Z0-9](?:[a-zA-Z0-9\-]{0,61}[a-zA-Z0-9])?\.)+(?:[A-Za-z]{2,63})\.?$/;
-
-                            function updateVisibility() {
-                                const val = select ? select.value : null;
-                                if (val === 'Hosted') {
-                                    hostedRow && hostedRow.classList.remove('d-none');
-                                    delegatedRow && delegatedRow.classList.add('d-none');
-                                    if (ipInput) ipInput.required = true;
-                                    if (nsInput) nsInput.required = false;
-                                } else if (val === 'Delegated') {
-                                    hostedRow && hostedRow.classList.add('d-none');
-                                    delegatedRow && delegatedRow.classList.remove('d-none');
-                                    if (ipInput) ipInput.required = false;
-                                    if (nsInput) nsInput.required = true;
-                                }
-                            }
-
-                            function isValidIP(value) {
-                                if (!value) return false;
-                                value = value.trim();
-                                return ipv4Regex.test(value) || ipv6Regex.test(value);
-                            }
-
-                            function isValidFQDN(name) {
-                                return fqdnRegex.test(name);
-                            }
-
-                            function validateForm(ev) {
-                                const errors = [];
-                                const type = select ? select.value : null;
-
-                                if (type === 'Hosted') {
-                                    const ip = ipInput ? ipInput.value.trim() : '';
-                                    if (!ip) {
-                                        errors.push('IP Address is required for Hosted delegation.');
-                                    } else if (!isValidIP(ip)) {
-                                        errors.push('Invalid IP Address. Provide a valid IPv4 or IPv6 address.');
-                                    }
-                                } else if (type === 'Delegated') {
-                                    const raw = nsInput ? nsInput.value : '';
-                                    const parts = raw.split(/[,;\s]+/).map(p => p.trim()).filter(Boolean);
-                                    if (parts.length === 0) {
-                                        errors.push('At least one nameserver FQDN is required for Delegated delegation.');
-                                    } else {
-                                        const invalid = parts.filter(p => !isValidFQDN(p));
-                                        if (invalid.length > 0) {
-                                            errors.push('The following nameserver entries are not valid FQDNs: ' + invalid.join(', '));
-                                        }
-                                    }
-                                }
-
-                                if (errors.length > 0) {
-                                    ev.preventDefault();
-                                    errorDiv.innerHTML = errors.map(e => '<div>' + e + '</div>').join('');
-                                    // focus first invalid field
-                                    if (type === 'Hosted' && ipInput) ipInput.focus();
-                                    else if (type === 'Delegated' && nsInput) nsInput.focus();
-                                    return false;
-                                }
-
-                                // no errors
-                                return true;
-                            }
-
-                            if (select) {
-                                select.addEventListener('change', function() { updateVisibility(); if (errorDiv) errorDiv.innerHTML = ''; });
-                                // initialize on load
-                                updateVisibility();
-                            }
-
-                            if (ipInput) {
-                                ipInput.addEventListener('input', function() { if (errorDiv) errorDiv.innerHTML = ''; });
-                            }
-
-                            if (nsInput) {
-                                nsInput.addEventListener('input', function() { if (errorDiv) errorDiv.innerHTML = ''; });
-                            }
-
-                            if (form) {
-                                form.addEventListener('submit', validateForm);
-                            }
-                        })();
-                    </script>
                 </div>
             </div>
         </div>
     </div>
 </section>
 
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        (() => {
+            const managementInputs = document.querySelectorAll('input[name="DelegationType"]');
+            const recordTypeInputs = document.querySelectorAll('input[name="HostedRecordType"]');
+            const hostedFields = document.getElementById('hostedFields');
+            const delegatedFields = document.getElementById('delegatedFields');
+            const hostedTarget = document.getElementById('hostedTarget');
+            const hostedTargetLabel = document.getElementById('hostedTargetLabel');
+            const hostedTargetHelp = document.getElementById('hostedTargetHelp');
+            const nameservers = document.getElementById('nameservers');
 
+            function selectedValue(inputs) {
+                return Array.from(inputs).find(input => input.checked)?.value;
+            }
 
+            function setVisible(element, visible) {
+                if (visible) {
+                    element.hidden = false;
+                    requestAnimationFrame(() => element.classList.add('is-visible'));
+                    return;
+                }
 
+                element.classList.remove('is-visible');
+                window.setTimeout(() => {
+                    if (!element.classList.contains('is-visible')) element.hidden = true;
+                }, 140);
+            }
+
+            function updateTargetCopy() {
+                const isCname = selectedValue(recordTypeInputs) === 'CNAME';
+                hostedTargetLabel.textContent = isCname ? 'Target hostname' : 'IPv4 address';
+                hostedTarget.placeholder = isCname ? 'app.platform.example' : '203.0.113.10';
+                hostedTarget.inputMode = isCname ? 'url' : 'decimal';
+                hostedTargetHelp.textContent = isCname
+                    ? 'Enter a fully qualified hostname without https://, a port, or a path.'
+                    : 'Enter the public IPv4 address where this hostname should resolve.';
+            }
+
+            function updateManagementFields() {
+                const isHosted = selectedValue(managementInputs) === 'Hosted';
+                setVisible(hostedFields, isHosted);
+                setVisible(delegatedFields, !isHosted);
+                hostedTarget.required = isHosted;
+                nameservers.required = !isHosted;
+            }
+
+            managementInputs.forEach(input => input.addEventListener('change', updateManagementFields));
+            recordTypeInputs.forEach(input => input.addEventListener('change', updateTargetCopy));
+            updateManagementFields();
+            updateTargetCopy();
+
+            const validationSummary = document.querySelector('.validation-summary-errors');
+            if (validationSummary) validationSummary.focus();
+        })();
+    </script>
+}
