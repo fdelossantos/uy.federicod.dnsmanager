@@ -2,6 +2,8 @@
 
 Production URL: `https://dnsmanager.federicod.com`
 
+This document covers the production deployment. For product behavior and architecture, see [architecture.md](architecture.md). For Cloudflare credentials, permissions, validation, and rotation, see [cloudflare-account-token.md](cloudflare-account-token.md).
+
 ## Runtime
 
 - Publish as framework-dependent `linux-x64` from `uy.federicod.dnsmanager/uy.federicod.dnsmanager.UI.csproj`; the server has ASP.NET Core Runtime 8 installed from AlmaLinux AppStream.
@@ -12,6 +14,7 @@ Production URL: `https://dnsmanager.federicod.com`
 - Keep `dnsmanager.federicod.com` included in AutoSSL. If the certificate becomes self-signed, check `SSL get_autossl_excluded_domains` and remove `dnsmanager.federicod.com` from the excluded list before running `/usr/local/cpanel/bin/autossl_check --user fdcom`.
 - Keep `Authentication__Provider=Entra` in production. Use `Test` only during controlled smoke tests.
 - `appsettings.Development.json` is intentionally ignored by git and excluded from publish output; do not copy it to production.
+- Use an Account Owned API Token for Cloudflare. Validate it with the account token endpoint and functional DNS operations; the user token verification endpoint is not valid for this credential type.
 
 ## Required Environment
 
@@ -28,6 +31,8 @@ ConnectionStrings__default=Server=localhost;Database=fdcom_dnsmanager;User ID=fd
 ```
 
 `AzureAd__ClientSecret` is only required if the app registration is changed to a confidential client/auth-code flow. The deployed configuration currently challenges Entra with `response_type=id_token` for tenant `fi365.ort.edu.uy`.
+
+`Cloudflare__ApiKey` is the secret value of the Account Owned API Token. Keep the environment file at mode `600`, owned by `root:root`, and follow [cloudflare-account-token.md](cloudflare-account-token.md) for every rotation. Do not commit the token or use `/user/tokens/verify` to validate it.
 
 For temporary test auth only:
 
@@ -58,7 +63,3 @@ curl -i https://federicod.com/
 ```
 
 Protected routes must redirect to the Universidad ORT Entra tenant when `Authentication__Provider=Entra`.
-
-## Federicod.net
-
-`dnsmanager.federicod.net` cannot be issued by AutoSSL until `federicod.net` exists in DNS and belongs to the `fdcom` cPanel account. Current checks showed `federicod.net` and `dnsmanager.federicod.net` as NXDOMAIN, and cPanel rejected the domain because it could not determine nameservers.
