@@ -68,6 +68,8 @@ Do not expose `Authentication__Provider=Test` through the public virtual host. S
 
 The public service must remain on `Authentication__Provider=Entra`. Remove the temporary environment file and transient unit after the test.
 
+For descendant CNAME validation, include at least one service-style record whose owner and target contain underscores and whose pasted values end in a dot. Confirm that the application removes the final dot for Cloudflare, accepts the same values without it, and displays validation errors after redirect instead of silently collapsing the form.
+
 ## Validation
 
 ```bash

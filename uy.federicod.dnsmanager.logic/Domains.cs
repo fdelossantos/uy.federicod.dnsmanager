@@ -571,11 +571,17 @@ namespace uy.federicod.dnsmanager.logic
                 return (false, "Zone not found.");
 
             string baseFqdn = $"{domainName}.{zoneName}";
-            string fqdn = ResolveToFqdn(inputName, baseFqdn, zoneName);
-            var cfType = ParseType(type);
+            if (!HostedRecordRules.TryNormalizeRecordName(
+                    inputName,
+                    baseFqdn,
+                    zoneName,
+                    out var fqdn,
+                    out var nameError))
+            {
+                return (false, nameError);
+            }
 
-            if (!HostedRecordRules.IsWithinDomainTree(fqdn, baseFqdn))
-                return (false, "The record name must be the hosted domain or one of its descendants.");
+            var cfType = ParseType(type);
 
             var registration = await GetHostedRegistrationAsync(domainName, zoneId, accountId);
             if (!registration.Exists)
@@ -598,7 +604,7 @@ namespace uy.federicod.dnsmanager.logic
             if (cfType == DnsRecordType.Cname)
             {
                 if (!HostedRecordRules.TryNormalizeHostname(content, out var normalizedHostname))
-                    return (false, "Content must be a valid fully qualified hostname for CNAME.");
+                    return (false, "Content must be a complete DNS name without a scheme, port, or path. A final dot is optional.");
                 content = normalizedHostname;
                 // Evitar CNAME en el baseFQDN si ya existe A base (restricción)
                 if (isBaseName)
@@ -796,17 +802,6 @@ WHERE DomainName=@DomainName AND ZoneId=@ZoneId AND Nameserver=@Nameserver;";
         {
             var h = TrimDot(host);
             return string.IsNullOrWhiteSpace(h) ? null : h.ToLowerInvariant();
-        }
-
-        private static string ResolveToFqdn(string inputName, string baseFqdn, string zoneName)
-        {
-            var n = (inputName ?? "").Trim();
-            if (string.IsNullOrEmpty(n) || n == "@") return baseFqdn;
-            if (n.EndsWith(".")) n = n[..^1];
-
-            // si ya es FQDN de la zona, se usa; si no, se anida bajo baseFqdn
-            if (n.EndsWith("." + zoneName, StringComparison.OrdinalIgnoreCase)) return n;
-            return $"{n}.{baseFqdn}";
         }
 
         private async Task TryUpsertRecordAsync(string domainName, string zoneId, string accountId, CloudFlare.Client.Api.Zones.DnsRecord.DnsRecord r)

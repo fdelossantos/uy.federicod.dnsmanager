@@ -2,6 +2,13 @@
 @model DomainModel
 @{
     ViewData["Title"] = "Manage Domain";
+    string? successMessage = ViewBag.SuccessMessage as string;
+    string? errorMessage = ViewBag.ErrorMessage as string;
+    string attemptedRecordType = ViewBag.AttemptedRecordType as string ?? "A";
+    string attemptedRecordName = ViewBag.AttemptedRecordName as string ?? string.Empty;
+    string attemptedRecordContent = ViewBag.AttemptedRecordContent as string ?? string.Empty;
+    string attemptedRecordPriority = ViewBag.AttemptedRecordPriority as string ?? "10";
+    bool reopenAddRecord = ViewBag.AttemptedRecordType is string;
 }
 <div class="pagetitle">
     <h1>@ViewData["Title"]</h1>
@@ -9,10 +16,18 @@
 
 <section class="section">
     <div class="row">
-        <div class="col-lg-6">
+        <div class="col-lg-12">
             <div class="card">
                 <div class="card-body">
                     <h5 class="card-title">@(Model.DomainName).@Model.ZoneName</h5>
+@if (!string.IsNullOrWhiteSpace(successMessage))
+{
+    <div class="alert alert-success" role="status">@successMessage</div>
+}
+@if (!string.IsNullOrWhiteSpace(errorMessage))
+{
+    <div class="alert alert-danger" role="alert" tabindex="-1" id="dnsRecordError">@errorMessage</div>
+}
 @if (Model.DelegationType == "Hosted")
 {
     @if (string.Equals(Model.HostedRecordType, "CNAME", StringComparison.OrdinalIgnoreCase))
@@ -25,13 +40,13 @@
 
     <div class="row mb-3">
         <div class="col-12">
-            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addRecordPanel" aria-expanded="false" aria-controls="addRecordPanel">
+            <button class="btn btn-primary" type="button" data-bs-toggle="collapse" data-bs-target="#addRecordPanel" aria-expanded="@(reopenAddRecord ? "true" : "false")" aria-controls="addRecordPanel">
                 Add record
             </button>
         </div>
     </div>
 
-    <div class="collapse" id="addRecordPanel">
+    <div class="collapse @(reopenAddRecord ? "show" : string.Empty)" id="addRecordPanel">
         <div class="card card-body">
             <form asp-controller="Domain" asp-action="AddHostedRecord" method="post">
                 @Html.AntiForgeryToken()
@@ -42,10 +57,10 @@
                     <label class="col-sm-2 col-form-label">Type</label>
                     <div class="col-sm-4">
                         <select class="form-select" name="RecordType" id="recordTypeSelect" onchange="onTypeChange()">
-                            <option value="A">A</option>
-                            <option value="CNAME">CNAME</option>
-                            <option value="TXT">TXT</option>
-                            <option value="MX">MX</option>
+                            <option value="A" selected="@(attemptedRecordType == "A")">A</option>
+                            <option value="CNAME" selected="@(attemptedRecordType == "CNAME")">CNAME</option>
+                            <option value="TXT" selected="@(attemptedRecordType == "TXT")">TXT</option>
+                            <option value="MX" selected="@(attemptedRecordType == "MX")">MX</option>
                         </select>
                     </div>
                 </div>
@@ -53,24 +68,25 @@
                 <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">Name</label>
                     <div class="col-sm-6">
-                        <input type="text" class="form-control" name="RecordName" placeholder="@($"{Model.DomainName}.{Model.ZoneName} or sub.{Model.DomainName}.{Model.ZoneName}")" />
+                        <input type="text" class="form-control" name="RecordName" value="@attemptedRecordName" aria-describedby="recordNameHelp" autocomplete="off" spellcheck="false" placeholder="@($"sub or sub.{Model.DomainName}.{Model.ZoneName}")" />
                     </div>
                     <div class="col-sm-4">
-                        <small class="text-muted">Use '@@' for base host.</small>
+                        <small class="text-muted" id="recordNameHelp">Enter a short name or the complete DNS name. A final dot is optional.</small>
                     </div>
                 </div>
 
                 <div class="row mb-3">
                     <label class="col-sm-2 col-form-label">Content</label>
                     <div class="col-sm-6">
-                        <input type="text" class="form-control" name="RecordContent" placeholder="IPv4 (A) / Hostname (CNAME) / Text (TXT) / Hostname (MX)" />
+                        <input type="text" class="form-control" name="RecordContent" id="recordContent" value="@attemptedRecordContent" aria-describedby="recordContentHelp" autocomplete="off" spellcheck="false" />
+                        <div class="form-text" id="recordContentHelp"></div>
                     </div>
                 </div>
 
                 <div class="row mb-3" id="priorityRow" style="display:none;">
                     <label class="col-sm-2 col-form-label">Priority</label>
                     <div class="col-sm-4">
-                        <input type="number" class="form-control" name="RecordPriority" min="0" value="10" />
+                        <input type="number" class="form-control" name="RecordPriority" min="0" value="@attemptedRecordPriority" />
                     </div>
                     <div class="col-sm-6">
                         <small class="text-muted">Priority for MX records, lower is higher priority.</small>
@@ -80,7 +96,7 @@
                 <div class="row">
                     <div class="col-sm-12 d-flex gap-2">
                         <button class="btn btn-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#addRecordPanel">Cancel</button>
-                        <button class="btn btn-success" type="submit">Add</button>
+                        <button class="btn btn-success" type="submit">Add record</button>
                     </div>
                 </div>
             </form>
@@ -184,13 +200,33 @@
     function onTypeChange() {
         var t = document.getElementById('recordTypeSelect').value;
         var pr = document.getElementById('priorityRow');
+        var content = document.getElementById('recordContent');
+        var help = document.getElementById('recordContentHelp');
         if (t === 'MX') {
             pr.style.display = '';
         } else {
             pr.style.display = 'none';
         }
+
+        if (t === 'A') {
+            content.placeholder = '203.0.113.10';
+            help.textContent = 'Enter an IPv4 address.';
+        } else if (t === 'CNAME') {
+            content.placeholder = '_token.provider.example.';
+            help.textContent = 'Paste the complete target supplied by the provider. Underscores and a final dot are accepted.';
+        } else if (t === 'MX') {
+            content.placeholder = 'mail.provider.example.';
+            help.textContent = 'Enter the complete mail server name. A final dot is optional.';
+        } else {
+            content.placeholder = 'Verification text supplied by the provider';
+            help.textContent = 'Paste the TXT value exactly as supplied.';
+        }
     }
 
     // Initialize on load
-    document.addEventListener('DOMContentLoaded', function(){ onTypeChange(); });
+    document.addEventListener('DOMContentLoaded', function(){
+        onTypeChange();
+        var error = document.getElementById('dnsRecordError');
+        if (error) error.focus();
+    });
 </script>

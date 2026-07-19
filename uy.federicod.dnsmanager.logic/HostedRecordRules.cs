@@ -77,9 +77,67 @@ public static class HostedRecordRules
         var labels = normalizedHostname.Split('.');
         return labels.All(label =>
             label.Length is >= 1 and <= 63 &&
-            char.IsLetterOrDigit(label[0]) &&
-            char.IsLetterOrDigit(label[^1]) &&
-            label.All(character => char.IsLetterOrDigit(character) || character == '-'));
+            IsDnsLabelEdge(label[0]) &&
+            IsDnsLabelEdge(label[^1]) &&
+            label.All(character =>
+                char.IsLetterOrDigit(character) || character is '-' or '_'));
+    }
+
+    public static bool TryNormalizeRecordName(
+        string? value,
+        string baseFqdn,
+        string zoneName,
+        out string normalizedName,
+        out string errorMessage)
+    {
+        normalizedName = string.Empty;
+        string normalizedBase = TrimTrailingDot(baseFqdn).ToLowerInvariant();
+        string normalizedZone = TrimTrailingDot(zoneName).ToLowerInvariant();
+        string input = TrimTrailingDot(value).ToLowerInvariant();
+
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            errorMessage = "Enter a record name.";
+            return false;
+        }
+
+        if (input == "@")
+        {
+            normalizedName = normalizedBase;
+        }
+        else if (string.Equals(input, normalizedBase, StringComparison.OrdinalIgnoreCase) ||
+                 input.EndsWith($".{normalizedBase}", StringComparison.OrdinalIgnoreCase) ||
+                 string.Equals(input, normalizedZone, StringComparison.OrdinalIgnoreCase) ||
+                 input.EndsWith($".{normalizedZone}", StringComparison.OrdinalIgnoreCase))
+        {
+            normalizedName = input;
+        }
+        else
+        {
+            string baseLabel = normalizedBase.EndsWith($".{normalizedZone}", StringComparison.OrdinalIgnoreCase)
+                ? normalizedBase[..^(normalizedZone.Length + 1)]
+                : normalizedBase;
+
+            normalizedName = string.Equals(input, baseLabel, StringComparison.OrdinalIgnoreCase) ||
+                             input.EndsWith($".{baseLabel}", StringComparison.OrdinalIgnoreCase)
+                ? $"{input}.{normalizedZone}"
+                : $"{input}.{normalizedBase}";
+        }
+
+        if (!TryNormalizeHostname(normalizedName, out normalizedName))
+        {
+            errorMessage = "Enter a valid DNS name using letters, numbers, hyphens, underscores, and dots.";
+            return false;
+        }
+
+        if (!IsWithinDomainTree(normalizedName, normalizedBase))
+        {
+            errorMessage = "The record name must be the hosted domain or one of its descendants.";
+            return false;
+        }
+
+        errorMessage = string.Empty;
+        return true;
     }
 
     public static bool IsBaseRecord(string? recordType, string? recordName, string baseFqdn)
@@ -125,5 +183,10 @@ public static class HostedRecordRules
     private static string TrimTrailingDot(string? value)
     {
         return (value ?? string.Empty).Trim().TrimEnd('.');
+    }
+
+    private static bool IsDnsLabelEdge(char character)
+    {
+        return char.IsLetterOrDigit(character) || character == '_';
     }
 }

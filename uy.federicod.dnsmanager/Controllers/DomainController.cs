@@ -166,6 +166,12 @@ namespace uy.federicod.dnsmanager.UI.Controllers
 
             //ViewBag.Records = await domains.GetRecordsAsync(id, zones[zonename]);
             ViewBag.Records = await domains.GetHostedRecordsAsync(id, zoneId, domainModel.AccountId);
+            ViewBag.SuccessMessage = TempData["Success"] as string;
+            ViewBag.ErrorMessage = TempData["Error"] as string;
+            ViewBag.AttemptedRecordType = TempData["HostedRecordType"] as string;
+            ViewBag.AttemptedRecordName = TempData["HostedRecordName"] as string;
+            ViewBag.AttemptedRecordContent = TempData["HostedRecordContent"] as string;
+            ViewBag.AttemptedRecordPriority = TempData["HostedRecordPriority"] as string;
 
             return View(domainModel);
         }
@@ -226,6 +232,8 @@ namespace uy.federicod.dnsmanager.UI.Controllers
         [ValidateAntiForgeryToken]
         public async Task<IActionResult> AddHostedRecord(string ZoneName, string DomainName, string RecordType, string RecordName, string RecordContent, string RecordPriority)
         {
+            PreserveHostedRecordAttempt(RecordType, RecordName, RecordContent, RecordPriority);
+
             var zonesByName = await service.GetAvailableZonesAsync();
             if (!zonesByName.TryGetValue(ZoneName, out var zoneId))
             {
@@ -233,9 +241,34 @@ namespace uy.federicod.dnsmanager.UI.Controllers
                 return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
             }
 
-            var domains = new Domains(service);
-            var (ok, msg) = await domains.CreateHostedRecordAsync(zoneId, DomainName, RecordType, RecordName, RecordContent, User?.Identity?.Name, RecordPriority);
-            TempData[ok ? "Success" : "Error"] = msg;
+            try
+            {
+                var domains = new Domains(service);
+                var (ok, msg) = await domains.CreateHostedRecordAsync(
+                    zoneId,
+                    DomainName,
+                    RecordType,
+                    RecordName,
+                    RecordContent,
+                    User?.Identity?.Name,
+                    RecordPriority);
+                TempData[ok ? "Success" : "Error"] = msg;
+
+                if (ok)
+                {
+                    ClearHostedRecordAttempt();
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(
+                    ex,
+                    "Hosted DNS record creation failed for {RecordName} below {DomainName}.{ZoneName}.",
+                    RecordName,
+                    DomainName,
+                    ZoneName);
+                TempData["Error"] = "The DNS record could not be created. Check the values and try again.";
+            }
 
             return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
         }
@@ -260,6 +293,26 @@ namespace uy.federicod.dnsmanager.UI.Controllers
             TempData[ok ? "Success" : "Error"] = msg;
 
             return RedirectToAction("Manage", new { id = DomainName, zonename = ZoneName });
+        }
+
+        private void PreserveHostedRecordAttempt(
+            string? recordType,
+            string? recordName,
+            string? recordContent,
+            string? recordPriority)
+        {
+            TempData["HostedRecordType"] = recordType ?? string.Empty;
+            TempData["HostedRecordName"] = recordName ?? string.Empty;
+            TempData["HostedRecordContent"] = recordContent ?? string.Empty;
+            TempData["HostedRecordPriority"] = recordPriority ?? string.Empty;
+        }
+
+        private void ClearHostedRecordAttempt()
+        {
+            TempData.Remove("HostedRecordType");
+            TempData.Remove("HostedRecordName");
+            TempData.Remove("HostedRecordContent");
+            TempData.Remove("HostedRecordPriority");
         }
     }
 }

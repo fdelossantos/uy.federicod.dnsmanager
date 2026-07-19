@@ -79,6 +79,66 @@ public sealed class HostedRecordRulesTests
     }
 
     [Theory]
+    [InlineData(
+        "_6574ae9014a00064aaff7c88ceae83e9.jkddzztszm.acm-validations.aws.",
+        "_6574ae9014a00064aaff7c88ceae83e9.jkddzztszm.acm-validations.aws")]
+    [InlineData(
+        "_6574ae9014a00064aaff7c88ceae83e9.jkddzztszm.acm-validations.aws",
+        "_6574ae9014a00064aaff7c88ceae83e9.jkddzztszm.acm-validations.aws")]
+    public void TryNormalizeHostname_AcceptsServiceValidationTargets(
+        string target,
+        string expected)
+    {
+        bool valid = HostedRecordRules.TryNormalizeHostname(target, out var normalized);
+
+        Assert.True(valid);
+        Assert.Equal(expected, normalized);
+    }
+
+    [Theory]
+    [InlineData(
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb.tda.lat.",
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb.tda.lat")]
+    [InlineData(
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb.tda.lat",
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb.tda.lat")]
+    [InlineData(
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974",
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb.tda.lat")]
+    [InlineData(
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb",
+        "_5b2f62dd7b2e34e26bc0f54fb4dd6974.misitioweb.tda.lat")]
+    [InlineData("www.store", "www.store.misitioweb.tda.lat")]
+    public void TryNormalizeRecordName_AcceptsFullAndRelativeNames(
+        string input,
+        string expected)
+    {
+        bool valid = HostedRecordRules.TryNormalizeRecordName(
+            input,
+            "misitioweb.tda.lat",
+            "tda.lat",
+            out var normalized,
+            out var errorMessage);
+
+        Assert.True(valid, errorMessage);
+        Assert.Equal(expected, normalized);
+    }
+
+    [Fact]
+    public void TryNormalizeRecordName_RejectsNamesOutsideHostedDomain()
+    {
+        bool valid = HostedRecordRules.TryNormalizeRecordName(
+            "validation.other.tda.lat.",
+            "misitioweb.tda.lat",
+            "tda.lat",
+            out _,
+            out var errorMessage);
+
+        Assert.False(valid);
+        Assert.Contains("hosted domain", errorMessage);
+    }
+
+    [Theory]
     [InlineData("A", DnsRecordType.A, "203.0.113.10")]
     [InlineData("CNAME", DnsRecordType.Cname, "app.platform.example")]
     public void BuildBaseRecord_CreatesExpectedCloudflareRecord(

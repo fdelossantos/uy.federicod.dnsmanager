@@ -43,6 +43,8 @@ La tabla `Zones` contiene los Zone IDs y el indicador `Enabled`. La aplicacion n
 
 El registro base A o CNAME creado para un dominio `Hosted` queda bloqueado contra borrado individual. Para retirarlo se elimina la registracion completa; esto evita dejar un dominio alojado sin su registro principal por accidente. Un CNAME base no puede coexistir con otros registros en el mismo nombre, aunque el usuario puede administrar registros en nombres descendientes.
 
+Para reducir errores de transcripcion, los nombres de registros descendientes se normalizan desde cualquiera de estas formas: etiqueta corta (`_validation`), nombre relativo que ya incluye el dominio reservado (`_validation.misitioweb`) o FQDN completo (`_validation.misitioweb.tda.lat.`). El punto final es opcional. Los targets CNAME deben ser nombres DNS completos, pero tambien aceptan punto final y `_` en las etiquetas, necesarios para validaciones de servicios como AWS ACM. No se infiere un dominio para un target CNAME incompleto porque eso podria publicar un destino distinto al indicado por el proveedor.
+
 ### Cloudflare como estado efectivo y MariaDB como metadatos
 
 Las lecturas de registros se contrastan con Cloudflare, incluyendo paginacion cuando corresponde. Las tablas locales permiten asociar recursos con usuarios y conservar metadatos, pero algunas sincronizaciones son deliberadamente `best-effort`: una falla local no debe presentarse como si hubiera revertido automaticamente un cambio que Cloudflare ya acepto.

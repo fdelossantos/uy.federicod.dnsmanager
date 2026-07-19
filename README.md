@@ -30,6 +30,8 @@ La aplicacion no registra dominios ante un registrar. Entrega subdominios dentro
 
 Cloudflare conserva el estado DNS efectivo. MySQL/MariaDB registra usuarios, zonas habilitadas, propiedad logica de los subdominios, el tipo de registro base Hosted y metadatos auxiliares. La lista de zonas ofrecidas por la interfaz sale de la tabla `Zones`, lo que evita exponer automaticamente cualquier otra zona visible para el token.
 
+Al agregar registros dentro de un dominio Hosted, el campo `Name` acepta una etiqueta corta, un nombre relativo terminado en el dominio reservado o el FQDN completo. Los nombres DNS y targets CNAME pueden incluir el punto final opcional y etiquetas de validacion con `_`, como las entregadas por AWS ACM.
+
 Las decisiones de arquitectura y sus motivos estan detalladas en [docs/architecture.md](docs/architecture.md).
 
 ## Estructura del repositorio
