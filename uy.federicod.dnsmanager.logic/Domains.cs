@@ -32,13 +32,13 @@ namespace uy.federicod.dnsmanager.logic
             List<DomainModel> results = [];
             string query = "SELECT * FROM Domains WHERE AccountId = @AccountId";
 
-            MySqlConnection connection = new(s.DBConnString);
+            using MySqlConnection connection = new(s.DBConnString);
             connection.Open();
 
-            MySqlCommand command = new(query, connection);
+            using MySqlCommand command = new(query, connection);
             command.Parameters.AddWithValue("AccountId", AccountId);
 
-            MySqlDataReader reader = command.ExecuteReader();
+            using MySqlDataReader reader = command.ExecuteReader();
             while(reader.Read())
             {
                 results.Add(new DomainModel()
@@ -64,29 +64,31 @@ namespace uy.federicod.dnsmanager.logic
             DomainModel result = new();
             string query = "SELECT * FROM Domains WHERE AccountId = @AccountId AND ZoneId = @ZoneId AND DomainName = @DomainName";
 
-            MySqlConnection connection = new(s.DBConnString);
-            connection.Open();
-
-            MySqlCommand command = new(query, connection);
-            command.Parameters.AddWithValue("DomainName", DomainName);
-            command.Parameters.AddWithValue("ZoneId", ZoneId);
-            command.Parameters.AddWithValue("AccountId", AccountId);
-
-            MySqlDataReader reader = command.ExecuteReader();
             int count = 0;
-            while (reader.Read())
+            using (MySqlConnection connection = new(s.DBConnString))
             {
-                result = new DomainModel()
+                connection.Open();
+
+                using MySqlCommand command = new(query, connection);
+                command.Parameters.AddWithValue("DomainName", DomainName);
+                command.Parameters.AddWithValue("ZoneId", ZoneId);
+                command.Parameters.AddWithValue("AccountId", AccountId);
+
+                using MySqlDataReader reader = command.ExecuteReader();
+                while (reader.Read())
                 {
-                    AccountId = AccountId,
-                    DelegationType = reader["DelegationType"].ToString(),
-                    HostedRecordType = reader["HostedRecordType"] == DBNull.Value
-                        ? null
-                        : reader["HostedRecordType"].ToString(),
-                    DomainName = reader["DomainName"].ToString(),
-                    ZoneId = reader["ZoneId"].ToString()
-                };
-                count++;
+                    result = new DomainModel()
+                    {
+                        AccountId = AccountId,
+                        DelegationType = reader["DelegationType"].ToString(),
+                        HostedRecordType = reader["HostedRecordType"] == DBNull.Value
+                            ? null
+                            : reader["HostedRecordType"].ToString(),
+                        DomainName = reader["DomainName"].ToString(),
+                        ZoneId = reader["ZoneId"].ToString()
+                    };
+                    count++;
+                }
             }
 
             // Agregar nameservers
@@ -188,10 +190,10 @@ namespace uy.federicod.dnsmanager.logic
                 string query = @"INSERT INTO Domains
                     (DomainName, ZoneId, AccountId, DelegationType, HostedRecordType)
                     VALUES (@DomainName, @ZoneId, @AccountId, @DelegationType, @HostedRecordType)";
-                MySqlConnection connection = new(s.DBConnString);
+                using MySqlConnection connection = new(s.DBConnString);
                 connection.Open();
 
-                MySqlCommand command = new(query, connection);
+                using MySqlCommand command = new(query, connection);
                 command.Parameters.AddWithValue("DomainName", domainModel.DomainName);
                 command.Parameters.AddWithValue("ZoneId", domainModel.ZoneId);
                 command.Parameters.AddWithValue("AccountId", accountModel.AccountId);

@@ -28,20 +28,21 @@ namespace uy.federicod.dnsmanager.logic
 
             string query = "SELECT * FROM Accounts WHERE AccountId = @AccountId";
 
-            MySqlConnection connection = new(DBConnString);
+            using MySqlConnection connection = new(DBConnString);
             connection.Open();
 
-            MySqlCommand command = new(query, connection);
-            command.Parameters.AddWithValue("AccountId", AccountId);
-            MySqlDataReader reader = command.ExecuteReader();
-
-            while (reader.Read())
+            using (MySqlCommand command = new(query, connection))
             {
-                account.AccountId = reader["AccountId"].ToString();
-                account.DisplayName = reader["DisplayName"].ToString();
-                account.Created = (DateTime)reader["Created"];
+                command.Parameters.AddWithValue("AccountId", AccountId);
+                using MySqlDataReader reader = command.ExecuteReader();
+
+                while (reader.Read())
+                {
+                    account.AccountId = reader["AccountId"].ToString();
+                    account.DisplayName = reader["DisplayName"].ToString();
+                    account.Created = (DateTime)reader["Created"];
+                }
             }
-            reader.Close();
 
             if (string.IsNullOrEmpty(account.AccountId))
             {
@@ -49,7 +50,7 @@ namespace uy.federicod.dnsmanager.logic
                 {
                     DateTime created = DateTime.Now;
                     query = "INSERT INTO Accounts (AccountId, DisplayName, Created) VALUES (@AccountId, @DisplayName, @Created)";
-                    MySqlCommand commandc = new(query, connection);
+                    using MySqlCommand commandc = new(query, connection);
                     commandc.Parameters.AddWithValue("AccountId", AccountId);
                     commandc.Parameters.AddWithValue("DisplayName", DisplayName);
                     commandc.Parameters.AddWithValue("Created", created);
